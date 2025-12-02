@@ -60,21 +60,14 @@ def get_prob_bar(prob_val):
 
 def main():
     print("\n" + "="*60)
-    print(" 🌐 戰情室網頁生成器 v3.0 (全能版)")
-    print(" 🎯 整合：歷史戰績 + 今日所有預測 + 策略單")
+    print(" 🌐 戰情室網頁生成器 v3.1 (修正版)")
+    print(" 🎯 修復 KeyError: Team_1 問題")
     print("="*60)
 
     # --- 1. 讀取檔案 ---
-    # A. 策略單 (Betting Plan)
     plan_file = find_latest_file("Betting_Plan_*.csv")
-    
-    # B. 串關單 (Parlay)
     parlay_file = find_latest_file("Daily_Parlay_Recommendations.csv")
-    
-    # C. 歷史總表 (History)
     history_file = "predictions_2026_full_report.csv"
-    
-    # D. 今日原始預測 (Raw Predictions) - 排除 full_report
     raw_pred_file = find_latest_file("predictions_*.csv", exclude="full_report")
 
     # --- 2. 處理歷史戰績 (History Stats) ---
@@ -86,17 +79,14 @@ def main():
         print(f" 📜 讀取歷史戰績: {history_file}")
         df_hist = pd.read_csv(history_file)
         
-        # 確保 Is_Correct 存在
         if 'Is_Correct' in df_hist.columns:
             total_games_hist = len(df_hist)
             overall_acc = df_hist['Is_Correct'].mean() * 100
             
-            # 近 10 場
             df_hist['date'] = pd.to_datetime(df_hist['date'])
             df_recent = df_hist.sort_values('date', ascending=False).head(10)
             recent_acc = df_recent['Is_Correct'].mean() * 100
             
-            # 高信心場次 (High)
             high_conf = df_hist[df_hist['Confidence'].str.contains("High", na=False)]
             high_acc = high_conf['Is_Correct'].mean() * 100 if not high_conf.empty else 0
             
@@ -124,7 +114,7 @@ def main():
             </div>
             """
         else:
-            stats_html = '<div class="alert alert-warning">歷史檔案缺少 Is_Correct 欄位，無法計算勝率。</div>'
+            stats_html = '<div class="alert alert-warning">歷史檔案缺少 Is_Correct 欄位。</div>'
     else:
         stats_html = '<div class="alert alert-secondary">尚無歷史戰績檔案。</div>'
 
@@ -139,7 +129,6 @@ def main():
             df_plan['勝率圖'] = df_plan['Win%'].apply(get_prob_bar)
             df_plan['EV'] = df_plan['EV'].apply(lambda x: f'<span class="fw-bold {"text-success" if x>0 else "text-muted"}">{x:+.2f}</span>')
             
-            # 欄位對應
             cols_show = ['Logo', 'Team', 'Loc', 'Opp', '勝率圖', 'Odds', 'EV', 'Signal', '注碼']
             rename = {'Team':'球隊', 'Loc':'主客', 'Opp':'對手', 'Odds':'賠率', 'Signal':'訊號'}
             
@@ -152,9 +141,7 @@ def main():
     if raw_pred_file and os.path.exists(raw_pred_file):
         print(f" 🔮 原始預測: {raw_pred_file}")
         df_raw = pd.read_csv(raw_pred_file)
-        # v500 產出的格式通常是: Date, Home, Away, Home_Win_Prob, Confidence, ...
         if not df_raw.empty:
-            # 簡單處理
             df_raw['主隊'] = df_raw['Home'].apply(get_logo_html) + " " + df_raw['Home']
             df_raw['客隊'] = df_raw['Away'].apply(get_logo_html) + " " + df_raw['Away']
             df_raw['主勝率'] = df_raw['Home_Win_Prob'].apply(get_prob_bar)
@@ -166,11 +153,22 @@ def main():
                 classes='table table-sm table-striped align-middle text-center', index=False, escape=False, border=0
             )
 
-    # --- 5. 處理串關 (Parlay) ---
+    # --- 5. 處理串關 (Parlay) - [修正點] ---
     parlay_html = '<div class="text-muted p-3">今日無串關推薦</div>'
     if parlay_file and os.path.exists(parlay_file):
         df_parlay = pd.read_csv(parlay_file)
         if not df_parlay.empty:
+            print(f" 🔗 讀取串關檔: {parlay_file}")
+            
+            # --- 相容性處理 ---
+            # 檢查是否存在 P1/P2 或是 Team_1/Team_2
+            if 'P1' in df_parlay.columns:
+                df_parlay['Team_1'] = df_parlay['P1']
+                df_parlay['Team_2'] = df_parlay['P2']
+            if 'Odds' in df_parlay.columns and 'Combined_Odds' not in df_parlay.columns:
+                df_parlay['Combined_Odds'] = df_parlay['Odds']
+            # ------------------
+
             df_parlay['組合'] = df_parlay['Team_1'] + ' ✚ ' + df_parlay['Team_2']
             df_parlay['類型'] = df_parlay['Type'].apply(lambda x: f'<span class="badge bg-dark">{x}</span>')
             
