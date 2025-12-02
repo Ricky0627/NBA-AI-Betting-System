@@ -2,177 +2,294 @@ import pandas as pd
 import os
 import glob
 import datetime
+import numpy as np
 
-def find_latest_betting_plan():
-    """尋找最新的 Betting_Plan_YYYY-MM-DD.csv"""
-    # 這裡的邏輯是找 Betting_Plan 開頭的檔案
-    files = glob.glob("Betting_Plan_*.csv")
+# --- 設定：Logo 對照 ---
+LOGO_MAP = {
+    'ATL': 'https://a.espncdn.com/i/teamlogos/nba/500/atl.png', 'BOS': 'https://a.espncdn.com/i/teamlogos/nba/500/bos.png',
+    'BRK': 'https://a.espncdn.com/i/teamlogos/nba/500/bkn.png', 'CHO': 'https://a.espncdn.com/i/teamlogos/nba/500/cha.png',
+    'CHI': 'https://a.espncdn.com/i/teamlogos/nba/500/chi.png', 'CLE': 'https://a.espncdn.com/i/teamlogos/nba/500/cle.png',
+    'DAL': 'https://a.espncdn.com/i/teamlogos/nba/500/dal.png', 'DEN': 'https://a.espncdn.com/i/teamlogos/nba/500/den.png',
+    'DET': 'https://a.espncdn.com/i/teamlogos/nba/500/det.png', 'GSW': 'https://a.espncdn.com/i/teamlogos/nba/500/gs.png',
+    'HOU': 'https://a.espncdn.com/i/teamlogos/nba/500/hou.png', 'IND': 'https://a.espncdn.com/i/teamlogos/nba/500/ind.png',
+    'LAC': 'https://a.espncdn.com/i/teamlogos/nba/500/lac.png', 'LAL': 'https://a.espncdn.com/i/teamlogos/nba/500/lal.png',
+    'MEM': 'https://a.espncdn.com/i/teamlogos/nba/500/mem.png', 'MIA': 'https://a.espncdn.com/i/teamlogos/nba/500/mia.png',
+    'MIL': 'https://a.espncdn.com/i/teamlogos/nba/500/mil.png', 'MIN': 'https://a.espncdn.com/i/teamlogos/nba/500/min.png',
+    'NOP': 'https://a.espncdn.com/i/teamlogos/nba/500/no.png', 'NYK': 'https://a.espncdn.com/i/teamlogos/nba/500/ny.png',
+    'OKC': 'https://a.espncdn.com/i/teamlogos/nba/500/okc.png', 'ORL': 'https://a.espncdn.com/i/teamlogos/nba/500/orl.png',
+    'PHI': 'https://a.espncdn.com/i/teamlogos/nba/500/phi.png', 'PHO': 'https://a.espncdn.com/i/teamlogos/nba/500/phx.png',
+    'POR': 'https://a.espncdn.com/i/teamlogos/nba/500/por.png', 'SAC': 'https://a.espncdn.com/i/teamlogos/nba/500/sac.png',
+    'SAS': 'https://a.espncdn.com/i/teamlogos/nba/500/sas.png', 'TOR': 'https://a.espncdn.com/i/teamlogos/nba/500/tor.png',
+    'UTA': 'https://a.espncdn.com/i/teamlogos/nba/500/utah.png', 'WAS': 'https://a.espncdn.com/i/teamlogos/nba/500/was.png',
+    'UNK': 'https://a.espncdn.com/i/teamlogos/nba/500/nba.png'
+}
+
+def get_logo_html(abbr):
+    url = LOGO_MAP.get(abbr, LOGO_MAP['UNK'])
+    return f'<img src="{url}" class="team-logo" alt="{abbr}">'
+
+def find_latest_file(pattern, exclude=None):
+    files = glob.glob(pattern)
+    if exclude:
+        files = [f for f in files if exclude not in f]
     if not files: return None
-    # 依檔案修改時間排序，找最新的
     return max(files, key=os.path.getctime)
+
+def calculate_units(signal):
+    if "ROI King" in signal: return "⭐⭐ 2u"
+    if "Value" in signal: return "⭐ 1u"
+    if "High EV" in signal: return "✨ 0.5u"
+    if "Anchor" in signal: return "⚓ 配腳"
+    return "-"
+
+def get_prob_bar(prob_val):
+    try:
+        prob_pct = float(prob_val) * 100
+    except:
+        prob_pct = 50
+    
+    color = "bg-success" if prob_pct >= 65 else "bg-warning" if prob_pct >= 50 else "bg-danger"
+    return f'''
+    <div class="d-flex align-items-center" style="min-width:100px;">
+        <span class="me-2 fw-bold small">{int(prob_pct)}%</span>
+        <div class="progress flex-grow-1" style="height: 6px;">
+            <div class="progress-bar {color}" role="progressbar" style="width: {prob_pct}%"></div>
+        </div>
+    </div>
+    '''
 
 def main():
     print("\n" + "="*60)
-    print(" 🌐 獨立網頁報表生成器 (Dashboard Generator)")
+    print(" 🌐 戰情室網頁生成器 v3.0 (全能版)")
+    print(" 🎯 整合：歷史戰績 + 今日所有預測 + 策略單")
     print("="*60)
 
-    # 1. 自動尋找最新的出單計畫表
-    target_file = find_latest_betting_plan()
+    # --- 1. 讀取檔案 ---
+    # A. 策略單 (Betting Plan)
+    plan_file = find_latest_file("Betting_Plan_*.csv")
+    
+    # B. 串關單 (Parlay)
+    parlay_file = find_latest_file("Daily_Parlay_Recommendations.csv")
+    
+    # C. 歷史總表 (History)
+    history_file = "predictions_2026_full_report.csv"
+    
+    # D. 今日原始預測 (Raw Predictions) - 排除 full_report
+    raw_pred_file = find_latest_file("predictions_*.csv", exclude="full_report")
 
-    if not target_file:
-        print(f" [!] 找不到任何 Betting_Plan 檔案，無法生成網頁。")
-        return
-
-    print(f" 📄 讀取最新戰報數據源: {target_file}")
-
-    try:
-        df = pd.read_csv(target_file)
+    # --- 2. 處理歷史戰績 (History Stats) ---
+    stats_html = ""
+    overall_acc = 0
+    total_games_hist = 0
+    
+    if os.path.exists(history_file):
+        print(f" 📜 讀取歷史戰績: {history_file}")
+        df_hist = pd.read_csv(history_file)
         
-        # --- 數據預處理 ---
-        total_games = len(df)
-        
-        # 計算推薦場次 (有 BET 字眼的)
-        bet_count = df[df['Signal'].astype(str).str.contains("BET", case=False, na=False)].shape[0]
-        
-        # 找出最大 EV
-        max_ev = df['EV'].max() if 'EV' in df.columns else 0
-
-        # 格式化顯示: 勝率
-        if 'Win%' in df.columns:
-            df['勝率'] = (df['Win%'] * 100).fillna(0).astype(int).astype(str) + '%'
-        
-        # 重命名欄位以符合閱讀習慣 (與 Betting_Plan 的欄位對應)
-        rename_map = {
-            'Date': '日期', 'Team': '球隊', 'Opp': '對手', 'Loc': '主客', 
-            'Odds': '賠率', 'EV': '期望值', 'Signal': '策略訊號', 'Rank': '評級'
-        }
-        display_df = df.rename(columns=rename_map)
-        
-        # 選取要在網頁顯示的欄位
-        show_cols = ['球隊', '主客', '對手', '勝率', '賠率', '期望值', '策略訊號']
-        # 防呆：只選存在的欄位
-        display_df = display_df[[c for c in show_cols if c in display_df.columns]]
-
-        # 轉 HTML 表格字串 (不帶樣式，樣式由下方的 DataTables 控制)
-        table_html = display_df.to_html(classes='table table-hover align-middle', index=False, table_id='predictionTable', border=0)
-
-        # 取得當前時間
-        update_time = datetime.datetime.now().strftime('%Y-%m-%d %H:%M')
-
-        # --- HTML 模板 (包含 CSS/JS) ---
-        html_content = f"""
-        <!DOCTYPE html>
-        <html lang="zh-Hant">
-        <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>NBA AI 每日戰報</title>
-            <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-            <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-            <link href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css" rel="stylesheet">
+        # 確保 Is_Correct 存在
+        if 'Is_Correct' in df_hist.columns:
+            total_games_hist = len(df_hist)
+            overall_acc = df_hist['Is_Correct'].mean() * 100
             
-            <style>
-                :root {{ --primary: #2c3e50; --accent: #3498db; --success: #27ae60; --danger: #e74c3c; --bg: #f8f9fa; }}
-                body {{ background-color: var(--bg); font-family: 'Segoe UI', sans-serif; color: #333; }}
-                .navbar {{ background: linear-gradient(to right, #141E30, #243B55); }}
-                .stat-card {{ background: white; border-radius: 10px; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border-left: 5px solid var(--accent); margin-bottom: 20px; }}
-                .table-container {{ background: white; border-radius: 15px; padding: 25px; box-shadow: 0 5px 15px rgba(0,0,0,0.05); }}
-                
-                /* 策略標籤樣式 */
-                .badge-roi {{ background-color: #8e44ad; color: white; padding: 8px 12px; border-radius: 20px; font-weight: 600; font-size: 0.9em; }}
-                .badge-val {{ background-color: var(--success); color: white; padding: 8px 12px; border-radius: 20px; font-weight: 600; font-size: 0.9em; }}
-                .badge-high {{ background-color: var(--danger); color: white; padding: 8px 12px; border-radius: 20px; font-weight: 600; font-size: 0.9em; }}
-                .badge-anchor {{ background-color: #2980b9; color: white; padding: 8px 12px; border-radius: 20px; font-weight: 600; font-size: 0.9em; }}
-                
-                .fw-bold {{ font-weight: 700 !important; }}
-                .text-win {{ color: var(--success); font-weight: bold; }}
-                
-                /* 表格優化 */
-                table.dataTable thead th {{ background-color: #f1f2f6; border-bottom: 2px solid #ddd; }}
-            </style>
-        </head>
-        <body>
-
-        <nav class="navbar navbar-dark mb-4">
-            <div class="container">
-                <a class="navbar-brand" href="#"><i class="fas fa-robot me-2"></i>NBA AI 投資戰情室</a>
-                <span class="text-white-50" style="font-size:0.9em">更新時間: {update_time}</span>
-            </div>
-        </nav>
-
-        <div class="container">
+            # 近 10 場
+            df_hist['date'] = pd.to_datetime(df_hist['date'])
+            df_recent = df_hist.sort_values('date', ascending=False).head(10)
+            recent_acc = df_recent['Is_Correct'].mean() * 100
+            
+            # 高信心場次 (High)
+            high_conf = df_hist[df_hist['Confidence'].str.contains("High", na=False)]
+            high_acc = high_conf['Is_Correct'].mean() * 100 if not high_conf.empty else 0
+            
+            stats_html = f"""
             <div class="row g-3 mb-4">
-                <div class="col-md-4"><div class="stat-card" style="border-color: #3498db;">
-                    <div class="text-muted text-uppercase small">監控賽事</div>
-                    <div class="fs-2 fw-bold text-dark">{total_games} <span class="fs-6 text-muted">場</span></div>
+                <div class="col-md-3"><div class="stat-card border-primary">
+                    <div class="stat-title">歷史總預測</div>
+                    <div class="stat-value">{total_games_hist} <span class="stat-unit">場</span></div>
                 </div></div>
-                <div class="col-md-4"><div class="stat-card" style="border-color: #2ecc71;">
-                    <div class="text-muted text-uppercase small">推薦下注</div>
-                    <div class="fs-2 fw-bold text-success">{bet_count} <span class="fs-6 text-muted">單</span></div>
+                <div class="col-md-3"><div class="stat-card border-success">
+                    <div class="stat-title">總體勝率</div>
+                    <div class="stat-value">{overall_acc:.1f}%</div>
+                    <div class="progress mt-2" style="height:4px;"><div class="progress-bar bg-success" style="width:{overall_acc}%"></div></div>
                 </div></div>
-                <div class="col-md-4"><div class="stat-card" style="border-color: #f1c40f;">
-                    <div class="text-muted text-uppercase small">最高期望值</div>
-                    <div class="fs-2 fw-bold text-warning">+{max_ev:.2f}</div>
+                <div class="col-md-3"><div class="stat-card border-info">
+                    <div class="stat-title">近 10 場勝率</div>
+                    <div class="stat-value">{recent_acc:.1f}%</div>
+                    <div class="progress mt-2" style="height:4px;"><div class="progress-bar bg-info" style="width:{recent_acc}%"></div></div>
                 </div></div>
+                <div class="col-md-3"><div class="stat-card border-warning">
+                    <div class="stat-title">高信心準確率</div>
+                    <div class="stat-value">{high_acc:.1f}%</div>
+                    <div class="progress mt-2" style="height:4px;"><div class="progress-bar bg-warning" style="width:{high_acc}%"></div></div>
+                </div></div>
+            </div>
+            """
+        else:
+            stats_html = '<div class="alert alert-warning">歷史檔案缺少 Is_Correct 欄位，無法計算勝率。</div>'
+    else:
+        stats_html = '<div class="alert alert-secondary">尚無歷史戰績檔案。</div>'
+
+    # --- 3. 處理策略單 (Strategy Table) ---
+    strategy_table_html = '<div class="text-center py-4 text-muted">今日無策略推薦</div>'
+    if plan_file and os.path.exists(plan_file):
+        print(f" 🎯 策略單: {plan_file}")
+        df_plan = pd.read_csv(plan_file)
+        if not df_plan.empty:
+            df_plan['Logo'] = df_plan['Team'].apply(get_logo_html)
+            df_plan['注碼'] = df_plan['Signal'].apply(calculate_units)
+            df_plan['勝率圖'] = df_plan['Win%'].apply(get_prob_bar)
+            df_plan['EV'] = df_plan['EV'].apply(lambda x: f'<span class="fw-bold {"text-success" if x>0 else "text-muted"}">{x:+.2f}</span>')
+            
+            # 欄位對應
+            cols_show = ['Logo', 'Team', 'Loc', 'Opp', '勝率圖', 'Odds', 'EV', 'Signal', '注碼']
+            rename = {'Team':'球隊', 'Loc':'主客', 'Opp':'對手', 'Odds':'賠率', 'Signal':'訊號'}
+            
+            strategy_table_html = df_plan[cols_show].rename(columns=rename).to_html(
+                classes='table table-hover align-middle mb-0', index=False, escape=False, border=0
+            )
+
+    # --- 4. 處理今日所有預測 (All Predictions) ---
+    raw_table_html = ""
+    if raw_pred_file and os.path.exists(raw_pred_file):
+        print(f" 🔮 原始預測: {raw_pred_file}")
+        df_raw = pd.read_csv(raw_pred_file)
+        # v500 產出的格式通常是: Date, Home, Away, Home_Win_Prob, Confidence, ...
+        if not df_raw.empty:
+            # 簡單處理
+            df_raw['主隊'] = df_raw['Home'].apply(get_logo_html) + " " + df_raw['Home']
+            df_raw['客隊'] = df_raw['Away'].apply(get_logo_html) + " " + df_raw['Away']
+            df_raw['主勝率'] = df_raw['Home_Win_Prob'].apply(get_prob_bar)
+            
+            cols_raw = ['Date', '主隊', '客隊', '主勝率', 'Confidence']
+            df_raw_show = df_raw[cols_raw].rename(columns={'Date':'日期', 'Confidence':'信心等級'})
+            
+            raw_table_html = df_raw_show.to_html(
+                classes='table table-sm table-striped align-middle text-center', index=False, escape=False, border=0
+            )
+
+    # --- 5. 處理串關 (Parlay) ---
+    parlay_html = '<div class="text-muted p-3">今日無串關推薦</div>'
+    if parlay_file and os.path.exists(parlay_file):
+        df_parlay = pd.read_csv(parlay_file)
+        if not df_parlay.empty:
+            df_parlay['組合'] = df_parlay['Team_1'] + ' ✚ ' + df_parlay['Team_2']
+            df_parlay['類型'] = df_parlay['Type'].apply(lambda x: f'<span class="badge bg-dark">{x}</span>')
+            
+            p_cols = ['類型', '組合', 'Combined_Odds']
+            parlay_html = df_parlay[p_cols].rename(columns={'Combined_Odds':'賠率'}).to_html(
+                classes='table table-bordered align-middle', index=False, escape=False, border=0
+            )
+
+    # --- 6. 組合 HTML ---
+    update_time = datetime.datetime.now().strftime('%Y-%m-%d %H:%M')
+    
+    html = f"""
+    <!DOCTYPE html>
+    <html lang="zh-Hant">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>NBA AI 戰情室</title>
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+        <link href="https://fonts.googleapis.com/css2?family=Teko:wght@400;600&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+        <style>
+            :root {{ --primary: #1a252f; --accent: #3498db; --bg: #f0f2f5; }}
+            body {{ background-color: var(--bg); font-family: 'Roboto', sans-serif; color: #2c3e50; }}
+            .navbar {{ background: #2c3e50; padding: 1rem; }}
+            .navbar-brand {{ font-family: 'Teko', sans-serif; font-size: 1.8rem; letter-spacing: 1px; color: #fff !important; }}
+            
+            .stat-card {{ background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border-left: 5px solid #ddd; }}
+            .stat-card.border-primary {{ border-left-color: #3498db; }}
+            .stat-card.border-success {{ border-left-color: #2ecc71; }}
+            .stat-card.border-info {{ border-left-color: #17a2b8; }}
+            .stat-card.border-warning {{ border-left-color: #f1c40f; }}
+            
+            .stat-title {{ font-size: 0.85rem; text-transform: uppercase; color: #7f8c8d; font-weight: 600; }}
+            .stat-value {{ font-size: 1.8rem; font-weight: 700; color: #2c3e50; }}
+            .stat-unit {{ font-size: 1rem; color: #95a5a6; font-weight: normal; }}
+            
+            .section-title {{ font-family: 'Teko', sans-serif; font-size: 1.5rem; border-left: 5px solid var(--accent); padding-left: 10px; margin-bottom: 20px; color: var(--primary); }}
+            
+            .card-box {{ background: #fff; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); padding: 0; overflow: hidden; margin-bottom: 30px; }}
+            .card-header-custom {{ background: #f8f9fa; padding: 15px 20px; border-bottom: 1px solid #eee; font-weight: 600; display: flex; justify-content: space-between; align-items: center; }}
+            
+            .team-logo {{ width: 30px; height: 30px; object-fit: contain; }}
+            
+            /* Table Styles */
+            table {{ margin-bottom: 0 !important; }}
+            thead th {{ background: #fdfdfd !important; font-size: 0.85rem; color: #999; text-transform: uppercase; }}
+            
+            .badge-roi {{ background: #8e44ad; color: #fff; }}
+            .badge-val {{ background: #27ae60; color: #fff; }}
+            .badge-high {{ background: #c0392b; color: #fff; }}
+            
+            footer {{ margin-top: 50px; padding: 20px; text-align: center; color: #aaa; font-size: 0.9rem; }}
+        </style>
+    </head>
+    <body>
+
+    <nav class="navbar navbar-dark mb-4">
+        <div class="container">
+            <a class="navbar-brand" href="#"><i class="fas fa-basketball-ball me-2 text-warning"></i> NBA AI 戰情室</a>
+            <span class="text-white-50 small">Updated: {update_time}</span>
+        </div>
+    </nav>
+
+    <div class="container">
+        
+        {stats_html}
+
+        <div class="row">
+            <div class="col-lg-8">
+                <div class="section-title">今日核心策略 (Strategy)</div>
+                
+                <div class="card-box">
+                    <div class="card-header-custom text-primary">
+                        <span><i class="fas fa-link me-2"></i>精選串關</span>
+                        <span class="badge bg-secondary">Parlay</span>
+                    </div>
+                    {parlay_html}
+                </div>
+
+                <div class="card-box">
+                    <div class="card-header-custom text-success">
+                        <span><i class="fas fa-crosshairs me-2"></i>最佳單場推薦</span>
+                        <span class="badge bg-success">Best Singles</span>
+                    </div>
+                    <div class="table-responsive">
+                        {strategy_table_html}
+                    </div>
+                </div>
             </div>
 
-            <div class="table-container">
-                <div class="d-flex justify-content-between align-items-center mb-4">
-                    <h5 class="fw-bold m-0"><i class="fas fa-list-ul me-2"></i>明日賽事策略清單</h5>
-                    <span class="badge bg-secondary">{target_file}</span>
-                </div>
-                <div class="table-responsive">
-                    {table_html}
+            <div class="col-lg-4">
+                <div class="section-title">全賽事預測 (All Games)</div>
+                <div class="card-box">
+                    <div class="card-header-custom text-secondary">
+                        <span><i class="fas fa-list me-2"></i>今日總覽</span>
+                        <span class="badge bg-light text-dark">{os.path.basename(raw_pred_file) if raw_pred_file else "No Data"}</span>
+                    </div>
+                    <div class="table-responsive" style="max-height: 800px; overflow-y: auto;">
+                        {raw_table_html}
+                    </div>
                 </div>
             </div>
-            
-            <footer class="text-center mt-5 text-muted small">
-                Generated by Master Controller v3
-            </footer>
         </div>
 
-        <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-        <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
-        <script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
-        <script>
-            $(document).ready(function() {{
-                $('#predictionTable').DataTable({{
-                    "paging": false,
-                    "info": false,
-                    "searching": false,
-                    "order": [[ 5, "desc" ]], // 預設依期望值 (第6欄, index 5) 排序
-                    "language": {{ "url": "//cdn.datatables.net/plug-ins/1.13.4/i18n/zh-Hant.json" }},
-                    "createdRow": function( row, data, dataIndex ) {{
-                        // 注意：DataTables 的欄位索引是從 0 開始
-                        // 假設欄位順序: 球隊(0), 主客(1), 對手(2), 勝率(3), 賠率(4), 期望值(5), 策略訊號(6)
-                        
-                        var signal = data[6]; 
-                        var cell = $('td', row).eq(6);
-                        
-                        if (signal.includes('ROI King')) cell.html('<span class="badge-roi"><i class="fas fa-crown me-1"></i>ROI King</span>');
-                        else if (signal.includes('Value')) cell.html('<span class="badge-val"><i class="fas fa-check me-1"></i>Value</span>');
-                        else if (signal.includes('High EV')) cell.html('<span class="badge-high"><i class="fas fa-fire me-1"></i>High EV</span>');
-                        else if (signal.includes('Anchor')) cell.html('<span class="badge-anchor"><i class="fas fa-anchor me-1"></i>Anchor</span>');
-                        
-                        // 勝率加強顯示 (Win%)
-                        var winRateStr = data[3];
-                        var winRate = parseInt(winRateStr.replace('%',''));
-                        if (winRate >= 60) $('td', row).eq(3).addClass('text-win');
-                    }}
-                }});
-            }});
-        </script>
-        </body>
-        </html>
-        """
+        <footer>
+            NBA AI System v3.0 • Powered by Random Forest & Grid Search Strategy
+        </footer>
+    </div>
 
-        with open('index.html', 'w', encoding='utf-8') as f:
-            f.write(html_content)
-        
-        print(" [V] index.html 生成成功！請直接打開網頁查看戰報。")
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    </body>
+    </html>
+    """
 
-    except Exception as e:
-        print(f" [X] 生成網頁時發生錯誤: {e}")
+    with open('index.html', 'w', encoding='utf-8') as f:
+        f.write(html)
+    
+    print(" [V] 戰情室 index.html 生成完畢！")
 
 if __name__ == "__main__":
-    main()  
+    main()
