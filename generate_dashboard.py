@@ -60,8 +60,8 @@ def get_prob_bar(prob_val):
 
 def main():
     print("\n" + "="*60)
-    print(" 🌐 戰情室網頁生成器 v3.1 (修正版)")
-    print(" 🎯 修復 KeyError: Team_1 問題")
+    print(" 🌐 戰情室網頁生成器 v3.3 (穩膽適配版)")
+    print(" 🎯 整合：歷史戰績 + 今日所有預測 + 策略單 (支援 v4.0 串關)")
     print("="*60)
 
     # --- 1. 讀取檔案 ---
@@ -153,7 +153,7 @@ def main():
                 classes='table table-sm table-striped align-middle text-center', index=False, escape=False, border=0
             )
 
-    # --- 5. 處理串關 (Parlay) - [修正點] ---
+    # --- 5. 處理串關 (Parlay) - [v3.3 升級] ---
     parlay_html = '<div class="text-muted p-3">今日無串關推薦</div>'
     if parlay_file and os.path.exists(parlay_file):
         df_parlay = pd.read_csv(parlay_file)
@@ -161,18 +161,29 @@ def main():
             print(f" 🔗 讀取串關檔: {parlay_file}")
             
             # --- 相容性處理 ---
-            # 檢查是否存在 P1/P2 或是 Team_1/Team_2
             if 'P1' in df_parlay.columns:
                 df_parlay['Team_1'] = df_parlay['P1']
                 df_parlay['Team_2'] = df_parlay['P2']
             if 'Odds' in df_parlay.columns and 'Combined_Odds' not in df_parlay.columns:
                 df_parlay['Combined_Odds'] = df_parlay['Odds']
+            if 'Combined_EV' not in df_parlay.columns:
+                df_parlay['Combined_EV'] = 0.0
             # ------------------
 
             df_parlay['組合'] = df_parlay['Team_1'] + ' ✚ ' + df_parlay['Team_2']
-            df_parlay['類型'] = df_parlay['Type'].apply(lambda x: f'<span class="badge bg-dark">{x}</span>')
             
-            p_cols = ['類型', '組合', 'Combined_Odds']
+            # 樣式優化: 根據 v4.0 的類型給予不同標籤顏色
+            def get_parlay_badge(ptype):
+                if "策略" in ptype: return f'<span class="badge bg-primary"><i class="fas fa-crown"></i> {ptype}</span>'
+                if "穩膽" in ptype: return f'<span class="badge bg-success"><i class="fas fa-shield-alt"></i> {ptype}</span>'
+                return f'<span class="badge bg-secondary">{ptype}</span>'
+
+            df_parlay['類型'] = df_parlay['Type'].apply(get_parlay_badge)
+            
+            # EV 格式化
+            df_parlay['期望值'] = df_parlay['Combined_EV'].apply(lambda x: f'<span class="fw-bold {"text-success" if x>0 else "text-muted"}">{x:+.2f}</span>')
+
+            p_cols = ['類型', '組合', 'Combined_Odds', '期望值']
             parlay_html = df_parlay[p_cols].rename(columns={'Combined_Odds':'賠率'}).to_html(
                 classes='table table-bordered align-middle', index=False, escape=False, border=0
             )
@@ -243,8 +254,8 @@ def main():
                 
                 <div class="card-box">
                     <div class="card-header-custom text-primary">
-                        <span><i class="fas fa-link me-2"></i>精選串關</span>
-                        <span class="badge bg-secondary">Parlay</span>
+                        <span><i class="fas fa-link me-2"></i>精選串關 (Parlay)</span>
+                        <span class="badge bg-secondary">Top Picks</span>
                     </div>
                     {parlay_html}
                 </div>
@@ -275,7 +286,7 @@ def main():
         </div>
 
         <footer>
-            NBA AI System v3.0 • Powered by Random Forest & Grid Search Strategy
+            NBA AI System v3.3 • Powered by Random Forest & Grid Search Strategy
         </footer>
     </div>
 
