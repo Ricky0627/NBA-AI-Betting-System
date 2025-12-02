@@ -1,0 +1,11 @@
+# Python 暫存檔
+__pycache__/
+*.pyc
+
+# 系統檔案
+.DS_Store
+Thumbs.db
+
+# 如果您不想公開您的預測結果或歷史數據，可以把 csv 加進來
+# 但為了讓別人能跑，建議保留 csv，除非檔案超過 100MB
+# *.csv
