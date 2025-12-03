@@ -2,6 +2,7 @@ import subprocess
 import time
 import os
 import sys
+from datetime import datetime
 
 def run_script(script_name):
     print(f"\n" + "="*60)
@@ -20,6 +21,60 @@ def run_script(script_name):
         return False
     except Exception as e:
         print(f"\n [X] {script_name} 發生未預期錯誤: {e}")
+        return False
+
+def upload_to_github():
+    """自動將指定檔案上傳到 GitHub"""
+    print("\\n" + "="*60)
+    print(" ▶ 正在上傳檔案到 GitHub...")
+    print("="*60 + "\\n")
+
+    github_username = os.getenv("GITHUB_USERNAME")
+    github_token = os.getenv("GITHUB_TOKEN")
+    repo_name = "NBA-AI-Betting-System"  # 請確保這是您的儲存庫名稱
+
+    if not github_username or not github_token:
+        print("\n [X] 缺少 GITHUB_USERNAME 或 GITHUB_TOKEN 環境變數。")
+        print("   無法自動上傳到 GitHub。")
+        return False
+
+    try:
+        # 設定 Git 使用者資訊
+        subprocess.run(["git", "config", "user.name", github_username], check=True)
+        subprocess.run(["git", "config", "user.email", f"{github_username}@users.noreply.github.com"], check=True)
+
+        # 1. 將所有變動加入暫存區
+        subprocess.run(["git", "add", "."], check=True)
+
+        # 2. 建立一個提交 (檢查是否有變動)
+        # 使用 git status --porcelain 檢查是否有任何變更
+        status_result = subprocess.run(["git", "status", "--porcelain"], capture_output=True, text=True)
+        if not status_result.stdout:
+            print("\n [i] 沒有偵測到任何檔案變動，無需上傳。")
+            return True
+
+        commit_message = f"Data update for {datetime.now().strftime('%Y-%m-%d')}"
+        subprocess.run(["git", "commit", "-m", commit_message], check=True)
+
+        # 3. 推送到遠端儲存庫 (使用 Token 進行驗證)
+        remote_url = f"https://{github_username}:{github_token}@github.com/{github_username}/{repo_name}.git"
+        subprocess.run(["git", "push", remote_url], check=True)
+
+        print("\n [V] 成功上傳到 GitHub！")
+        return True
+    except subprocess.CalledProcessError as e:
+        print(f"\n [X] 上傳到 GitHub 失敗 (錯誤碼: {e.returncode})")
+        # 加上更詳細的錯誤訊息
+        output = e.stdout.decode('utf-8') if e.stdout else ""
+        error = e.stderr.decode('utf-8') if e.stderr else ""
+        print(f"   STDOUT: {output}")
+        print(f"   STDERR: {error}")
+        return False
+    except FileNotFoundError:
+        print("\n [X] Git 命令未找到。請確認 Git 已安裝並在系統 PATH 中。")
+        return False
+    except Exception as e:
+        print(f"\n [X] 上傳時發生未預期錯誤: {e}")
         return False
 
 def main():
@@ -70,6 +125,9 @@ def main():
     print(" 🎉 所有分析步驟完成！")
     print(" 📂 請直接打開 'index.html' 查看今日戰報")
     print("#"*60)
+
+    # 自動上傳到 GitHub
+    upload_to_github()
 
 if __name__ == "__main__":
     main()

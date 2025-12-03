@@ -1,0 +1,23 @@
+# Git
+.git
+.gitignore
+
+# Docker
+Dockerfile
+.dockerignore
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# IDE/Editor specific
+.vscode/
+.idea/
+
+# Environment files
+.env
+
+# Windows specific
+Thumbs.db
