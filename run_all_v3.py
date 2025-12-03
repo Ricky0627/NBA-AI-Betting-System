@@ -28,11 +28,20 @@ def main():
     # 定義執行順序
     # 注意: v960 必須在 v900 之後 (需要賠率檔)，在 dashboard 之前
     scripts = [
+        "v300_get_links.py",
+        "v300_parse_data_incremental.py",
+        "v400_get_current_injuries.py", 
+        "v200_gmsc_cumulative.py",
+        "v1_update_v53.py", 
+        "v200data_process9.py",
+        "v200_merge_final.py",
+        "PlaySport歷史賠率批次爬蟲 (增量更新版).py",
+        "predictions_2026_full_report.py",
         # "v300_update_master_dataset.py",  # (可選) 更新數據
-        # "fix_columns.py",                 # (可選) 修正欄位
+        "fix_columns.py",                 # (可選) 修正欄位
         "v500_export_predictions.py",       # 1. 預測
         "v900_daily_strategy_output.py",    # 2. 爬賠率 + 單場策略 + 存賠率檔
-        "v960_parlay_ranking_master.py",    # 3. 生成最優串關 (讀取 v900 的賠率)
+        "v970_rolling_parlay_optimizer.py",    # 3. 生成最優串關 (讀取 v900 的賠率)
         "generate_dashboard.py"             # 4. 生成網頁
     ]
 
