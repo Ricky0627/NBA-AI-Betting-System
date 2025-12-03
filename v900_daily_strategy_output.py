@@ -134,8 +134,8 @@ def get_playsport_odds_v501(target_date_str):
 
 def main():
     print("\n" + "="*60)
-    print(" 🏀 NBA 每日實戰出單機 (v900 - v501核心版)")
-    print(" 🎯 讀取預測 -> 爬取 PlaySport (隔日) -> 產出策略單")
+    print(" 🏀 NBA 每日實戰出單機 (v900.2 - 自動備份賠率版)")
+    print(" 🎯 讀取預測 -> 爬取 PlaySport -> 存賠率檔 -> 產出策略單")
     print("="*60)
 
     # 1. 讀取最新預測
@@ -172,6 +172,12 @@ def main():
 
     df_odds = pd.DataFrame(odds_data)
     
+    # --- [關鍵修正]：順便儲存原始賠率檔，讓 generate_dashboard.py 使用 ---
+    raw_odds_file = f"odds_for_{us_date_str}.csv"
+    df_odds.to_csv(raw_odds_file, index=False, encoding='utf-8-sig')
+    print(f"💾 已備份原始賠率檔: {raw_odds_file} (供儀表板串關計算)")
+    # -------------------------------------------------------------
+    
     # 3. 合併數據與計算 (v900 策略核心)
     final_rows = []
     
@@ -189,7 +195,6 @@ def main():
         ]
         
         if match_odd.empty:
-            # print(f"  [跳過] 找不到賠率: {away} vs {home}")
             continue
             
         odd_h = float(match_odd.iloc[0]['Odds_Home'])

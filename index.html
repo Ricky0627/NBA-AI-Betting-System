@@ -22,7 +22,6 @@
             
             .stat-title { font-size: 0.85rem; text-transform: uppercase; color: #7f8c8d; font-weight: 600; }
             .stat-value { font-size: 1.8rem; font-weight: 700; color: #2c3e50; }
-            .stat-unit { font-size: 1rem; color: #95a5a6; font-weight: normal; }
             
             .section-title { font-family: 'Teko', sans-serif; font-size: 1.5rem; border-left: 5px solid var(--accent); padding-left: 10px; margin-bottom: 20px; color: var(--primary); }
             
@@ -31,13 +30,8 @@
             
             .team-logo { width: 30px; height: 30px; object-fit: contain; }
             
-            /* Table Styles */
             table { margin-bottom: 0 !important; }
             thead th { background: #fdfdfd !important; font-size: 0.85rem; color: #999; text-transform: uppercase; }
-            
-            .badge-roi { background: #8e44ad; color: #fff; }
-            .badge-val { background: #27ae60; color: #fff; }
-            .badge-high { background: #c0392b; color: #fff; }
             
             footer { margin-top: 50px; padding: 20px; text-align: center; color: #aaa; font-size: 0.9rem; }
         </style>
@@ -47,32 +41,28 @@
     <nav class="navbar navbar-dark mb-4">
         <div class="container">
             <a class="navbar-brand" href="#"><i class="fas fa-basketball-ball me-2 text-warning"></i> NBA AI 戰情室</a>
-            <span class="text-white-50 small">Updated: 2025-12-03 01:47</span>
+            <span class="text-white-50 small">Updated: 2025-12-03 11:06</span>
         </div>
     </nav>
 
     <div class="container">
         
-        
             <div class="row g-3 mb-4">
                 <div class="col-md-3"><div class="stat-card border-primary">
                     <div class="stat-title">歷史總預測</div>
-                    <div class="stat-value">299 <span class="stat-unit">場</span></div>
+                    <div class="stat-value">299</div>
                 </div></div>
                 <div class="col-md-3"><div class="stat-card border-success">
                     <div class="stat-title">總體勝率</div>
                     <div class="stat-value">71.6%</div>
-                    <div class="progress mt-2" style="height:4px;"><div class="progress-bar bg-success" style="width:71.57190635451505%"></div></div>
                 </div></div>
                 <div class="col-md-3"><div class="stat-card border-info">
                     <div class="stat-title">近 10 場勝率</div>
                     <div class="stat-value">80.0%</div>
-                    <div class="progress mt-2" style="height:4px;"><div class="progress-bar bg-info" style="width:80.0%"></div></div>
                 </div></div>
                 <div class="col-md-3"><div class="stat-card border-warning">
                     <div class="stat-title">高信心準確率</div>
                     <div class="stat-value">77.3%</div>
-                    <div class="progress mt-2" style="height:4px;"><div class="progress-bar bg-warning" style="width:77.27272727272727%"></div></div>
                 </div></div>
             </div>
             
@@ -82,196 +72,9 @@
                 <div class="section-title">今日核心策略 (Strategy)</div>
                 
                 <div class="card-box">
-                    <div class="card-header-custom text-primary">
-                        <span><i class="fas fa-link me-2"></i>精選串關 (Parlay)</span>
-                        <span class="badge bg-secondary">Top Picks</span>
-                    </div>
-                    <table class="dataframe table table-bordered align-middle">
-  <thead>
-    <tr style="text-align: right;">
-      <th>類型</th>
-      <th>組合</th>
-      <th>賠率</th>
-      <th>期望值</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td><span class="badge bg-secondary">🛡️ 穩健二串一</span></td>
-      <td>IND ✚ GSW</td>
-      <td>2.24</td>
-      <td><span class="fw-bold text-muted">+0.00</span></td>
-    </tr>
-    <tr>
-      <td><span class="badge bg-secondary">🛡️ 穩健二串一</span></td>
-      <td>UTA ✚ LAL</td>
-      <td>1.82</td>
-      <td><span class="fw-bold text-muted">+0.00</span></td>
-    </tr>
-    <tr>
-      <td><span class="badge bg-secondary">🛡️ 穩健二串一</span></td>
-      <td>BOS ✚ TOR</td>
-      <td>2.21</td>
-      <td><span class="fw-bold text-muted">+0.00</span></td>
-    </tr>
-    <tr>
-      <td><span class="badge bg-secondary">🛡️ 穩健二串一</span></td>
-      <td>TOR ✚ NOP</td>
-      <td>3.95</td>
-      <td><span class="fw-bold text-muted">+0.00</span></td>
-    </tr>
-    <tr>
-      <td><span class="badge bg-secondary">🛡️ 穩健二串一</span></td>
-      <td>UTA ✚ CLE</td>
-      <td>4.06</td>
-      <td><span class="fw-bold text-muted">+0.00</span></td>
-    </tr>
-    <tr>
-      <td><span class="badge bg-secondary">🛡️ 穩健二串一</span></td>
-      <td>CHO ✚ DAL</td>
-      <td>3.06</td>
-      <td><span class="fw-bold text-muted">+0.00</span></td>
-    </tr>
-    <tr>
-      <td><span class="badge bg-secondary">🛡️ 穩健二串一</span></td>
-      <td>DAL ✚ PHO</td>
-      <td>3.18</td>
-      <td><span class="fw-bold text-muted">+0.00</span></td>
-    </tr>
-    <tr>
-      <td><span class="badge bg-secondary">🛡️ 穩健二串一</span></td>
-      <td>MIL ✚ ORL</td>
-      <td>2.53</td>
-      <td><span class="fw-bold text-muted">+0.00</span></td>
-    </tr>
-    <tr>
-      <td><span class="badge bg-secondary">🛡️ 穩健二串一</span></td>
-      <td>IND ✚ POR</td>
-      <td>3.87</td>
-      <td><span class="fw-bold text-muted">+0.00</span></td>
-    </tr>
-    <tr>
-      <td><span class="badge bg-secondary">🛡️ 穩健二串一</span></td>
-      <td>ATL ✚ ORL</td>
-      <td>3.49</td>
-      <td><span class="fw-bold text-muted">+0.00</span></td>
-    </tr>
-    <tr>
-      <td><span class="badge bg-secondary">🛡️ 穩健二串一</span></td>
-      <td>DET ✚ DEN</td>
-      <td>1.18</td>
-      <td><span class="fw-bold text-muted">+0.00</span></td>
-    </tr>
-    <tr>
-      <td><span class="badge bg-secondary">🛡️ 穩健二串一</span></td>
-      <td>DAL ✚ PHO</td>
-      <td>3.30</td>
-      <td><span class="fw-bold text-muted">+0.00</span></td>
-    </tr>
-    <tr>
-      <td><span class="badge bg-secondary">🛡️ 穩健二串一</span></td>
-      <td>MIN ✚ CLE</td>
-      <td>2.09</td>
-      <td><span class="fw-bold text-muted">+0.00</span></td>
-    </tr>
-    <tr>
-      <td><span class="badge bg-secondary">🛡️ 穩健二串一</span></td>
-      <td>DET ✚ ORL</td>
-      <td>1.78</td>
-      <td><span class="fw-bold text-muted">+0.00</span></td>
-    </tr>
-    <tr>
-      <td><span class="badge bg-secondary">🛡️ 穩健二串一</span></td>
-      <td>NYK ✚ DET</td>
-      <td>2.74</td>
-      <td><span class="fw-bold text-muted">+0.00</span></td>
-    </tr>
-    <tr>
-      <td><span class="badge bg-secondary">🛡️ 穩健二串一</span></td>
-      <td>PHI ✚ UTA</td>
-      <td>3.28</td>
-      <td><span class="fw-bold text-muted">+0.00</span></td>
-    </tr>
-    <tr>
-      <td><span class="badge bg-secondary">🛡️ 穩健二串一</span></td>
-      <td>CHI ✚ CHO</td>
-      <td>6.34</td>
-      <td><span class="fw-bold text-muted">+0.00</span></td>
-    </tr>
-    <tr>
-      <td><span class="badge bg-secondary">🛡️ 穩健二串一</span></td>
-      <td>PHI ✚ MIL</td>
-      <td>4.62</td>
-      <td><span class="fw-bold text-muted">+0.00</span></td>
-    </tr>
-    <tr>
-      <td><span class="badge bg-secondary">🛡️ 穩健二串一</span></td>
-      <td>MIA ✚ DEN</td>
-      <td>2.30</td>
-      <td><span class="fw-bold text-muted">+0.00</span></td>
-    </tr>
-    <tr>
-      <td><span class="badge bg-secondary">🛡️ 穩健二串一</span></td>
-      <td>MEM ✚ DAL</td>
-      <td>3.48</td>
-      <td><span class="fw-bold text-muted">+0.00</span></td>
-    </tr>
-    <tr>
-      <td><span class="badge bg-secondary">🛡️ 穩健二串一</span></td>
-      <td>MEM ✚ IND</td>
-      <td>5.16</td>
-      <td><span class="fw-bold text-muted">+0.00</span></td>
-    </tr>
-    <tr>
-      <td><span class="badge bg-secondary">🛡️ 穩健二串一</span></td>
-      <td>CHO ✚ IND</td>
-      <td>7.31</td>
-      <td><span class="fw-bold text-muted">+0.00</span></td>
-    </tr>
-    <tr>
-      <td><span class="badge bg-secondary">🛡️ 穩健二串一</span></td>
-      <td>CHI ✚ IND</td>
-      <td>4.09</td>
-      <td><span class="fw-bold text-muted">+0.00</span></td>
-    </tr>
-    <tr>
-      <td><span class="badge bg-secondary">🛡️ 穩健二串一</span></td>
-      <td>DET ✚ BOS</td>
-      <td>3.50</td>
-      <td><span class="fw-bold text-muted">+0.00</span></td>
-    </tr>
-    <tr>
-      <td><span class="badge bg-secondary">🛡️ 穩健二串一</span></td>
-      <td>PHI ✚ CHI</td>
-      <td>4.63</td>
-      <td><span class="fw-bold text-muted">+0.00</span></td>
-    </tr>
-    <tr>
-      <td><span class="badge bg-secondary">🛡️ 穩健二串一</span></td>
-      <td>DET ✚ MIA</td>
-      <td>2.99</td>
-      <td><span class="fw-bold text-muted">+0.00</span></td>
-    </tr>
-    <tr>
-      <td><span class="badge bg-secondary">🛡️ 穩健二串一</span></td>
-      <td>BRK ✚ ORL</td>
-      <td>5.32</td>
-      <td><span class="fw-bold text-muted">+0.00</span></td>
-    </tr>
-    <tr>
-      <td><span class="badge bg-secondary">🛡️ 穩健二串一</span></td>
-      <td>NYK ✚ CHI</td>
-      <td>3.57</td>
-      <td><span class="fw-bold text-muted">+0.00</span></td>
-    </tr>
-  </tbody>
-</table>
-                </div>
-
-                <div class="card-box">
                     <div class="card-header-custom text-success">
                         <span><i class="fas fa-crosshairs me-2"></i>最佳單場推薦</span>
-                        <span class="badge bg-success">Best Singles</span>
+                        <span class="badge bg-success">Top Picks</span>
                     </div>
                     <div class="table-responsive">
                         <table class="dataframe table table-hover align-middle mb-0">
@@ -281,7 +84,7 @@
       <th>球隊</th>
       <th>主客</th>
       <th>對手</th>
-      <th>勝率圖</th>
+      <th>勝率</th>
       <th>賠率</th>
       <th>EV</th>
       <th>訊號</th>
@@ -294,7 +97,7 @@
       <td>BOS</td>
       <td>Home</td>
       <td>NYK</td>
-      <td>\n    <div class="d-flex align-items-center" style="min-width:100px;">\n        <span class="me-2 fw-bold small">64%</span>\n        <div class="progress flex-grow-1" style="height: 6px;">\n            <div class="progress-bar bg-warning" role="progressbar" style="width: 64.0%"></div>\n        </div>\n    </div>\n</td>
+      <td><span class="fw-bold text-success" style="font-size: 1.1rem;">64%</span></td>
       <td>1.8</td>
       <td><span class="fw-bold text-success">+0.15</span></td>
       <td>💎 BET HOME (ROI King)</td>
@@ -303,6 +106,43 @@
   </tbody>
 </table>
                     </div>
+                </div>
+                
+                <div class="card-box">
+                    <div class="card-header-custom text-primary">
+                        <span><i class="fas fa-link me-2"></i>最佳串關推薦 (Best Parlays)</span>
+                        <span class="badge bg-warning text-dark">Optimization: 60% ROI Strategy</span>
+                    </div>
+                    <table class="dataframe table table-bordered align-middle">
+  <thead>
+    <tr style="text-align: right;">
+      <th>類型</th>
+      <th>組合</th>
+      <th>賠率</th>
+      <th>期望值</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><span class="badge bg-warning text-dark"><i class="fas fa-crown"></i> 🌟 黃金組合 (強烈推薦)</span></td>
+      <td>TOR + BOS</td>
+      <td>2.430</td>
+      <td><span class="fw-bold text-success">+0.31</span></td>
+    </tr>
+    <tr>
+      <td><span class="badge bg-primary"><i class="fas fa-gem"></i> 💎 高價值 (High EV)</span></td>
+      <td>BOS + MEM</td>
+      <td>4.104</td>
+      <td><span class="fw-bold text-success">+0.21</span></td>
+    </tr>
+    <tr>
+      <td><span class="badge bg-primary"><i class="fas fa-gem"></i> 💎 高價值 (High EV)</span></td>
+      <td>TOR + MEM</td>
+      <td>3.078</td>
+      <td><span class="fw-bold text-success">+0.19</span></td>
+    </tr>
+  </tbody>
+</table>
                 </div>
             </div>
 
@@ -319,52 +159,66 @@
     <tr style="text-align: right;">
       <th>日期</th>
       <th>主隊</th>
+      <th>主賠率</th>
+      <th>客賠率</th>
       <th>客隊</th>
       <th>主勝率</th>
-      <th>信心等級</th>
+      <th>信心</th>
     </tr>
   </thead>
   <tbody>
     <tr>
       <td>2025-12-02</td>
       <td><img src="https://a.espncdn.com/i/teamlogos/nba/500/phi.png" class="team-logo" alt="PHI"> PHI</td>
+      <td>NaN</td>
+      <td>NaN</td>
       <td><img src="https://a.espncdn.com/i/teamlogos/nba/500/was.png" class="team-logo" alt="WAS"> WAS</td>
-      <td>\n    <div class="d-flex align-items-center" style="min-width:100px;">\n        <span class="me-2 fw-bold small">52%</span>\n        <div class="progress flex-grow-1" style="height: 6px;">\n            <div class="progress-bar bg-warning" role="progressbar" style="width: 52.0%"></div>\n        </div>\n    </div>\n</td>
+      <td><span class="fw-bold text-dark" style="font-size: 1.1rem;">52%</span></td>
       <td>Toss-up</td>
     </tr>
     <tr>
       <td>2025-12-02</td>
       <td><img src="https://a.espncdn.com/i/teamlogos/nba/500/tor.png" class="team-logo" alt="TOR"> TOR</td>
+      <td>1.35</td>
+      <td>2.30</td>
       <td><img src="https://a.espncdn.com/i/teamlogos/nba/500/por.png" class="team-logo" alt="POR"> POR</td>
-      <td>\n    <div class="d-flex align-items-center" style="min-width:100px;">\n        <span class="me-2 fw-bold small">84%</span>\n        <div class="progress flex-grow-1" style="height: 6px;">\n            <div class="progress-bar bg-success" role="progressbar" style="width: 84.0%"></div>\n        </div>\n    </div>\n</td>
+      <td><span class="fw-bold text-success" style="font-size: 1.1rem;">84%</span></td>
       <td>🟢 High (Home)</td>
     </tr>
     <tr>
       <td>2025-12-02</td>
       <td><img src="https://a.espncdn.com/i/teamlogos/nba/500/bos.png" class="team-logo" alt="BOS"> BOS</td>
+      <td>1.80</td>
+      <td>1.63</td>
       <td><img src="https://a.espncdn.com/i/teamlogos/nba/500/ny.png" class="team-logo" alt="NYK"> NYK</td>
-      <td>\n    <div class="d-flex align-items-center" style="min-width:100px;">\n        <span class="me-2 fw-bold small">64%</span>\n        <div class="progress flex-grow-1" style="height: 6px;">\n            <div class="progress-bar bg-warning" role="progressbar" style="width: 64.0%"></div>\n        </div>\n    </div>\n</td>
+      <td><span class="fw-bold text-success" style="font-size: 1.1rem;">64%</span></td>
       <td>Toss-up</td>
     </tr>
     <tr>
       <td>2025-12-02</td>
       <td><img src="https://a.espncdn.com/i/teamlogos/nba/500/no.png" class="team-logo" alt="NOP"> NOP</td>
+      <td>3.40</td>
+      <td>1.13</td>
       <td><img src="https://a.espncdn.com/i/teamlogos/nba/500/min.png" class="team-logo" alt="MIN"> MIN</td>
-      <td>\n    <div class="d-flex align-items-center" style="min-width:100px;">\n        <span class="me-2 fw-bold small">27%</span>\n        <div class="progress flex-grow-1" style="height: 6px;">\n            <div class="progress-bar bg-danger" role="progressbar" style="width: 27.0%"></div>\n        </div>\n    </div>\n</td>
+      <td><span class="fw-bold text-danger" style="font-size: 1.1rem;">27%</span></td>
       <td>🔴 High (Away)</td>
     </tr>
     <tr>
       <td>2025-12-02</td>
       <td><img src="https://a.espncdn.com/i/teamlogos/nba/500/sas.png" class="team-logo" alt="SAS"> SAS</td>
+      <td>1.36</td>
+      <td>2.28</td>
       <td><img src="https://a.espncdn.com/i/teamlogos/nba/500/mem.png" class="team-logo" alt="MEM"> MEM</td>
-      <td>\n    <div class="d-flex align-items-center" style="min-width:100px;">\n        <span class="me-2 fw-bold small">54%</span>\n        <div class="progress flex-grow-1" style="height: 6px;">\n            <div class="progress-bar bg-warning" role="progressbar" style="width: 54.0%"></div>\n        </div>\n    </div>\n</td>
+      <td><span class="fw-bold text-dark" style="font-size: 1.1rem;">54%</span></td>
       <td>Toss-up</td>
     </tr>
     <tr>
       <td>2025-12-02</td>
       <td><img src="https://a.espncdn.com/i/teamlogos/nba/500/gs.png" class="team-logo" alt="GSW"> GSW</td>
+      <td>NaN</td>
+      <td>NaN</td>
       <td><img src="https://a.espncdn.com/i/teamlogos/nba/500/okc.png" class="team-logo" alt="OKC"> OKC</td>
-      <td>\n    <div class="d-flex align-items-center" style="min-width:100px;">\n        <span class="me-2 fw-bold small">33%</span>\n        <div class="progress flex-grow-1" style="height: 6px;">\n            <div class="progress-bar bg-danger" role="progressbar" style="width: 33.0%"></div>\n        </div>\n    </div>\n</td>
+      <td><span class="fw-bold text-danger" style="font-size: 1.1rem;">33%</span></td>
       <td>🔴 High (Away)</td>
     </tr>
   </tbody>
@@ -375,7 +229,7 @@
         </div>
 
         <footer>
-            NBA AI System v3.3 • Powered by Random Forest & Grid Search Strategy
+            NBA AI System v3.7 • Powered by Random Forest & Parlay Optimizer
         </footer>
     </div>
 

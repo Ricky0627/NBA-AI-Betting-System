@@ -1,180 +1,112 @@
 import pandas as pd
 import numpy as np
 import os
-from itertools import product
-
-# --- 基於 12/2 報告的參數設定 ---
-# ✅ 模範生：預測準確率極高，優先作為配腳
-TRUSTED_TEAMS = ['OKC', 'BRK', 'PHI', 'NOP', 'LAC'] 
-
-# ⚠️ 搗亂者：預測失準，絕對避開 (扣分)
-RISKY_TEAMS = ['CHO', 'MIL', 'ATL']
+from itertools import combinations
 
 def generate_parlays():
-    print("--- 🔗 串關生成器 (v4.0 - 策略+穩膽版) ---")
-    print("--- 邏輯：以高 EV 策略單為主，搭配高信心穩膽 ---")
+    print("--- 🔗 串關生成器 (v4.0 - 嚴格同日修正版) ---")
     
     input_file = "Final_Betting_Signals.csv"
     if not os.path.exists(input_file):
-        print(f"❌ 找不到 {input_file}。")
+        print(f"❌ 找不到 {input_file}，無法生成串關建議。")
         return
 
     df = pd.read_csv(input_file)
     
-    # 日期處理
+    # 日期處理 (確保只有日期部分，去除時間)
     col_date = 'date' if 'date' in df.columns else 'Date'
     df[col_date] = pd.to_datetime(df[col_date]).dt.date
     
-    # ---------------------------------------------------------
-    # 1. 定義評分函數 (尋找最佳配腳)
-    # ---------------------------------------------------------
-    def get_anchor_score(row):
-        # 基礎分數 = 勝率
-        score = float(row.get('Prob', 0)) * 100
-        team = row['Team_Abbr']
-        is_home = row['Is_Home']
+    # 1. 篩選候選名單
+    # 條件：EV > 0 (正期望值) 或 勝率 > 65% (高勝率)
+    def is_candidate(row):
+        ev = float(row.get('EV', 0))
         prob = float(row.get('Prob', 0))
-        
-        # A. 信心水準加權 (根據報告)
-        # High (Away) 準確率 86.1% -> 大幅加分
-        if not is_home and prob >= 0.60:
-            score += 25 
-        # High (Home) 準確率 73.9% -> 中幅加分
-        elif is_home and prob >= 0.65:
-            score += 10
-            
-        # B. 球隊特性加權 (根據報告)
-        if team in TRUSTED_TEAMS:
-            score += 15  # 模範生加分
-        elif team in RISKY_TEAMS:
-            score -= 100 # 搗亂者直接淘汰 (扣到負分)
-            
-        return score
+        if ev > 0: return True
+        if prob > 0.65: return True
+        return False
 
-    df['Anchor_Score'] = df.apply(get_anchor_score, axis=1)
-
-    # ---------------------------------------------------------
-    # 2. 分類：主角 (Strategy) 與 配角 (Anchor)
-    # ---------------------------------------------------------
-    # 主角：符合我們原本的高 EV 策略
-    def is_main_leg(row):
-        sig = str(row.get('Signal', ''))
-        return "ROI King" in sig or "Value" in sig or "High EV" in sig
-
-    df['Is_Main'] = df.apply(is_main_leg, axis=1)
+    df['Is_Candidate'] = df.apply(is_candidate, axis=1)
+    candidates = df[df['Is_Candidate']].copy()
     
-    # 配角：勝率高，且不是搗亂者 (Anchor Score 高)
-    # 這裡設定 Score > 75 分才有資格當穩膽
-    df['Is_Anchor'] = df['Anchor_Score'] > 75
-
-    unique_dates = sorted(df[col_date].unique(), reverse=True)
+    # 取得所有唯一的日期，並由新到舊排序
+    unique_dates = sorted(candidates[col_date].unique(), reverse=True)
     all_parlays = []
 
-    print(f"正在掃描 {len(unique_dates)} 個比賽日...")
+    print(f"正在分析 {len(unique_dates)} 個比賽日的最佳組合...")
 
+    # --- 關鍵修正：針對「每一天」獨立進行配對 ---
     for d in unique_dates:
-        daily_games = df[df[col_date] == d].copy()
+        # 鎖定這一天的比賽
+        daily_games = candidates[candidates[col_date] == d].copy()
         
-        if len(daily_games) < 2: continue
-        
-        # 分別取出當天的主角群與配角群
-        main_legs = daily_games[daily_games['Is_Main']].copy()
-        anchor_legs = daily_games[daily_games['Is_Anchor']].copy()
-        
-        # 依分數排序，最好的配角排前面
-        anchor_legs = anchor_legs.sort_values(by='Anchor_Score', ascending=False)
-        
-        # 產生組合
-        # 邏輯：拿每一個「主角」，去配一個最好的「配角」
-        # 如果當天沒有主角，則退而求其次，找兩個最好的配角互串
-        
-        daily_parlays = []
-        used_pairs = set()
-
-        # --- 情況 A: 有策略單 (主角 + 配角) ---
-        if not main_legs.empty:
-            for idx1, row1 in main_legs.iterrows():
-                # 找一個不是自己的最佳配角
-                for idx2, row2 in anchor_legs.iterrows():
-                    # 避免同場比賽互串
-                    if row1['Team_Abbr'] == row2['Opp_Abbr']: continue
-                    # 避免自己串自己
-                    if row1['Team_Abbr'] == row2['Team_Abbr']: continue
-                    
-                    # 建立組合 ID 防止重複
-                    pair_id = tuple(sorted([row1['Team_Abbr'], row2['Team_Abbr']]))
-                    if pair_id in used_pairs: continue
-                    
-                    # 計算數據
-                    comb_odd = row1['Odds_Team'] * row2['Odds_Team']
-                    comb_prob = row1['Prob'] * row2['Prob']
-                    comb_ev = (comb_prob * comb_odd) - 1
-                    
-                    p_type = "🏆 策略+穩膽"
-                    if row2['Team_Abbr'] in TRUSTED_TEAMS:
-                        p_type += " (模範生)"
-                    
-                    # 這是我們最想要的組合，分數給高一點
-                    sort_score = 1000 + comb_ev 
-                    
-                    daily_parlays.append({
-                        'Date': d.strftime('%Y-%m-%d'),
-                        'Type': p_type,
-                        'Score': sort_score,
-                        'Team_1': f"{row1['Team_Abbr']} ({row1['Odds_Team']})", # 主角
-                        'Team_2': f"{row2['Team_Abbr']} ({row2['Odds_Team']})", # 配角
-                        'P1': row1['Team_Abbr'], 
-                        'P2': row2['Team_Abbr'],
-                        'Combined_Odds': round(comb_odd, 2),
-                        'Combined_Prob': round(comb_prob * 100, 1),
-                        'Combined_EV': round(comb_ev, 2)
-                    })
-                    used_pairs.add(pair_id)
-                    break # 每個主角只配一個最好的配角，避免重複太多
-
-        # --- 情況 B: 沒策略單 (雙配角互串) ---
-        # 如果上面產生的組合太少(例如0個)，我們就拿最好的兩個 Anchor 互串
-        if len(daily_parlays) == 0 and len(anchor_legs) >= 2:
-            row1 = anchor_legs.iloc[0]
-            row2 = anchor_legs.iloc[1]
+        # 至少要 2 場才能串
+        if len(daily_games) < 2: 
+            # print(f"  日期 {d}: 符合條件場次不足 ({len(daily_games)} 場)，跳過。")
+            continue
             
-            if row1['Team_Abbr'] != row2['Opp_Abbr']:
-                comb_odd = row1['Odds_Team'] * row2['Odds_Team']
-                comb_prob = row1['Prob'] * row2['Prob']
-                comb_ev = (comb_prob * comb_odd) - 1
-                
-                daily_parlays.append({
-                    'Date': d.strftime('%Y-%m-%d'),
-                    'Type': "🛡️ 雙穩膽 (無策略單)",
-                    'Score': 500, # 分數比策略單低
-                    'Team_1': f"{row1['Team_Abbr']} ({row1['Odds_Team']})",
-                    'Team_2': f"{row2['Team_Abbr']} ({row2['Odds_Team']})",
-                    'P1': row1['Team_Abbr'], 
-                    'P2': row2['Team_Abbr'],
-                    'Combined_Odds': round(comb_odd, 2),
-                    'Combined_Prob': round(comb_prob * 100, 1),
-                    'Combined_EV': round(comb_ev, 2)
-                })
+        # 產生所有 2 串 1 組合 (C取2)
+        combs = list(combinations(daily_games.iterrows(), 2))
+        
+        # 暫存當日的組合，稍後排序
+        daily_parlays = []
+        
+        for (idx1, row1), (idx2, row2) in combs:
+            # 防呆：同一場比賽的主客隊不能串 (Team_Abbr vs Opp_Abbr)
+            if row1['Team_Abbr'] == row2['Opp_Abbr']: continue
 
-        # 加入總表 (每天只取前 3 名)
+            # 計算串關數據
+            comb_odd = row1['Odds_Team'] * row2['Odds_Team']
+            comb_prob = row1['Prob'] * row2['Prob']
+            comb_ev = (comb_prob * comb_odd) - 1
+            
+            # 評分機制 (Score)
+            score = (comb_ev * 0.7) + (comb_prob * 0.3)
+            
+            # 定義類型
+            p_type = "普通串關"
+            if row1['Prob'] > 0.7 and row2['Prob'] > 0.7: p_type = "🛡️ 雙穩膽"
+            elif comb_ev > 0.3: p_type = "💰 高價值"
+            elif "ROI King" in str(row1['Signal']) and "ROI King" in str(row2['Signal']): p_type = "💎 黃金串"
+            elif "ROI King" in str(row1['Signal']) or "ROI King" in str(row2['Signal']): p_type = "✨ 強力串"
+            
+            daily_parlays.append({
+                'Date': d,
+                'Type': p_type,
+                'Score': round(score, 4),
+                'Team_1': f"{row1['Team_Abbr']} ({row1['Odds_Team']})",
+                'Team_2': f"{row2['Team_Abbr']} ({row2['Odds_Team']})",
+                'P1': row1['Team_Abbr'], 
+                'P2': row2['Team_Abbr'],
+                'Combined_Odds': round(comb_odd, 2),
+                'Combined_Prob': round(comb_prob * 100, 1),
+                'Combined_EV': round(comb_ev, 2)
+            })
+            
+        # 對當日的組合進行排序 (分數高 -> 低)
         daily_parlays.sort(key=lambda x: x['Score'], reverse=True)
-        for p in daily_parlays[:3]:
-            del p['Score']
-            all_parlays.append(p)
+        
+        # 只取當日前 5 名加入總表
+        all_parlays.extend(daily_parlays[:5])
 
-    # 輸出
+    # 4. 輸出結果
     if all_parlays:
         df_out = pd.DataFrame(all_parlays)
-        df_out.to_csv("Daily_Parlay_Recommendations.csv", index=False, encoding='utf-8-sig')
-        print(f"✅ 生成串關表: Daily_Parlay_Recommendations.csv (共 {len(df_out)} 筆)")
+        output_file = "Daily_Parlay_Recommendations.csv"
+        df_out.to_csv(output_file, index=False, encoding='utf-8-sig')
         
-        # 預覽
-        print(f"\n📢 最新推薦 [{df_out.iloc[0]['Date']}]:")
-        top = df_out.iloc[0]
-        print(f"   [{top['Type']}]")
-        print(f"   {top['P1']} + {top['P2']} | 賠率: {top['Combined_Odds']} | EV: {top['Combined_EV']}")
+        print(f"✅ 已生成串關排行榜: {output_file}")
+        print(f"   共列出 {len(df_out)} 組建議 (嚴格同日配對)")
+        
+        # 預覽最新一天的第一名
+        if not df_out.empty:
+            latest = df_out.iloc[0]
+            print(f"\n📢 [{latest['Date']}] 最佳推薦:")
+            print(f"   {latest['P1']} + {latest['P2']} (賠率 {latest['Combined_Odds']})")
+            
     else:
-        print("⚠️ 無法生成串關建議。")
+        print("⚠️ 無法生成串關建議 (可能因為每天符合條件的比賽都不足 2 場)。")
+        # 產生空檔防止報錯
         cols = ['Date','Type','Team_1','Team_2','P1','P2','Combined_Odds','Combined_Prob','Combined_EV']
         pd.DataFrame(columns=cols).to_csv("Daily_Parlay_Recommendations.csv", index=False)
 
