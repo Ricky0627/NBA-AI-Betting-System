@@ -173,7 +173,7 @@ def main():
     df_odds = pd.DataFrame(odds_data)
     
     # --- [關鍵修正]：順便儲存原始賠率檔，讓 generate_dashboard.py 使用 ---
-    raw_odds_file = f"odds_for_{us_date_str}.csv"
+    raw_odds_file = f"odds/odds_for_{us_date_str}.csv"
     df_odds.to_csv(raw_odds_file, index=False, encoding='utf-8-sig')
     print(f"💾 已備份原始賠率檔: {raw_odds_file} (供儀表板串關計算)")
     # -------------------------------------------------------------
@@ -277,7 +277,7 @@ def main():
         df_final = pd.DataFrame(columns=['Date','Team','Opp','Loc','Win%','Odds','EV','Signal','Rank'])
 
     # 存檔
-    output_csv = f"Betting_Plan_{us_date_str}.csv"
+    output_csv = f"betting_plan/Betting_Plan_{us_date_str}.csv"
     df_final.to_csv(output_csv, index=False, encoding='utf-8-sig')
     print(f"\n✅ 詳細計畫已匯出: {output_csv}")
 

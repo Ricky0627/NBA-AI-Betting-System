@@ -57,9 +57,9 @@ def main():
     print("="*60)
 
     # 檔案路徑
-    plan_file = find_latest_file("Betting_Plan_*.csv")
+    plan_file = find_latest_file("betting_plan/Betting_Plan_*.csv")
     history_file = "predictions_2026_full_report.csv"
-    raw_pred_file = find_latest_file("predictions_*.csv", exclude="full_report")
+    raw_pred_file = find_latest_file("predictions/predictions_*.csv", exclude="full_report")
     parlay_file = "Daily_Parlay_Recommendations.csv" # 這是 v960 的產出
 
     # --- 1. 歷史戰績 ---
@@ -121,7 +121,7 @@ def main():
             odds_map = {}
             match = re.search(r"predictions_(\d{4}-\d{2}-\d{2})\.csv", raw_pred_file)
             if match:
-                odds_file = f"odds_for_{match.group(1)}.csv"
+                odds_file = f"odds/odds_for_{match.group(1)}.csv"
                 if os.path.exists(odds_file):
                     df_o = pd.read_csv(odds_file)
                     for _, r in df_o.iterrows():

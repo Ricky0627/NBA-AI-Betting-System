@@ -20,9 +20,20 @@ def get_links_for_date(date_obj):
     url = f"https://www.basketball-reference.com/boxscores/?month={month}&day={day}&year={year}"
     print(f"  ... 正在檢查日期: {date_obj.strftime('%Y-%m-%d')} (來源: {url})")
     
+    # --- [隨機 Header 設定] ---
+    user_agents = [
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/121.0',
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Safari/605.1.15',
+        'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36 Edg/121.0.0.0'
+    ]
+    
+    random_ua = np.random.choice(user_agents)
     
     headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'User-Agent': random_ua,
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
         'Accept-Language': 'en-US,en;q=0.9,zh-TW;q=0.8,zh;q=0.7',
         'Referer': 'https://www.google.com/',
@@ -40,7 +51,6 @@ def get_links_for_date(date_obj):
         soup = BeautifulSoup(response.content, 'lxml')
         
         # 找到所有 "Box Score" 連結
-        # BBR 的結構是：在每個比賽的表格下方有一個 "Box Score" 連結
         for link in soup.find_all('a', string='Box Score'):
             href = link.get('href')
             if href:
@@ -72,16 +82,15 @@ print(f"目前數據庫最後日期: {last_date.strftime('%Y-%m-%d')}")
 
 # 2. 設定抓取範圍：從 (最後日期 + 1天) 到 (今天)
 today = datetime.now()
-# 如果最後日期是今天，代表已經最新了，但為了保險（可能今天稍早只抓了一半），我們還是檢查今天
 start_date = last_date + timedelta(days=1) 
 end_date = today
 
 if start_date.date() > end_date.date():
     print("數據已經是最新的！無需更新連結。")
-    # 產生一個空的 CSV 以免後續腳本報錯
     pd.DataFrame(columns=['box_score_url']).to_csv('new_links_v300.csv', index=False)
     exit()
 
+# [修正] 這裡加上了缺失的 "}"
 print(f"準備更新日期範圍: {start_date.strftime('%Y-%m-%d')} 到 {end_date.strftime('%Y-%m-%d')}")
 
 # 3. 循環日期抓取連結

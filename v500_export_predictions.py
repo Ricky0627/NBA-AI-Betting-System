@@ -277,7 +277,7 @@ def main():
         print(f"{home:<5} vs {away:<5} | {prob:.1%}    | {confidence}")
 
     if export_data:
-        output_csv = f"predictions_{target_date_str}.csv"
+        output_csv = f"predictions/predictions_{target_date_str}.csv"
         pd.DataFrame(export_data).to_csv(output_csv, index=False, encoding='utf-8-sig')
         print(f"\n成功匯出預測結果至: {output_csv}")
 
