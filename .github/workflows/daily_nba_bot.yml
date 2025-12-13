@@ -1,9 +1,6 @@
 name: NBA AI Daily Run
 
 on:
-  schedule:
-    # 設定每天 UTC 12:00 執行 (等於台灣時間 20:00)
-    - cron: '0 12 * * *'
   workflow_dispatch: # 允許手動點擊按鈕執行 (測試用)
 
 permissions:
