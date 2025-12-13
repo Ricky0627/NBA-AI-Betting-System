@@ -1,5 +1,6 @@
 import proxy_patch
 import requests
+import urllib3
 from bs4 import BeautifulSoup, Comment
 import pandas as pd
 import time
@@ -8,6 +9,9 @@ import traceback
 import re
 import os
 
+# 禁用不安全請求的警告 (因為我們會使用 verify=False)
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
 def parse_box_score_ultimate(url, session, retries=3, delay=15):
     """
     【v300 Ultimate - 終極解析函式】
@@ -15,9 +19,8 @@ def parse_box_score_ultimate(url, session, retries=3, delay=15):
     1. 球隊比賽數據 (Team Stats) & DNP
     2. 球員單場數據 (Player GmSc)
     """
-    print(f"  ... 正在解析 {url}")
+    print(f"   ... 正在解析 {url}")
     
-    # --- [修改開始] ---
     # 定義多個 User-Agent 以供隨機切換
     user_agents = [
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -32,16 +35,16 @@ def parse_box_score_ultimate(url, session, retries=3, delay=15):
     random_ua = np.random.choice(user_agents)
 
     headers = { 
-        'User-Agent': random_ua, # 使用隨機選取的 UA
+        'User-Agent': random_ua,
         'Accept-Language': 'en-US,en;q=0.9',
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8'
     }
-    # --- [修改結束] ---
     
     response = None
     for attempt in range(retries):
         try:
-            response = session.get(url, headers=headers, timeout=15)
+            # 使用傳入的 session (已包含 proxy 設定)
+            response = session.get(url, headers=headers, timeout=30)
             response.raise_for_status() 
             break 
         except requests.exceptions.RequestException as e:
@@ -58,7 +61,13 @@ def parse_box_score_ultimate(url, session, retries=3, delay=15):
             game_date = match.group(1) 
             home_team_abbr = match.group(2) 
         else:
-            return None, None
+            # 嘗試從原始 URL 解析，如果 redirect 後 URL 變了
+            match_orig = re.search(r'/boxscores/(\d{8})0(\w{3})\.html', url)
+            if match_orig:
+                game_date = match_orig.group(1)
+                home_team_abbr = match_orig.group(2)
+            else:
+                return None, None
 
         soup = BeautifulSoup(response.content, 'lxml')
         
@@ -143,14 +152,13 @@ def parse_box_score_ultimate(url, session, retries=3, delay=15):
                 if not mp_cell or not mp_cell.text.strip(): continue
                 
                 # Player Name & ID
-                # Name 在 th data-stat="player"
                 player_th = row.find('th', {'data-stat': 'player'})
                 if not player_th: continue
                 
-                player_id = player_th.get('data-append-csv') # BBR 這裡直接藏了 ID!
+                player_id = player_th.get('data-append-csv')
                 player_name = player_th.find('a').text if player_th.find('a') else player_th.text
                 
-                if not player_id: continue # 沒 ID 可能是 Team Totals 或異常
+                if not player_id: continue
                 
                 # GmSc
                 gmsc_cell = row.find('td', {'data-stat': 'game_score'})
@@ -160,7 +168,6 @@ def parse_box_score_ultimate(url, session, retries=3, delay=15):
                     gmsc_val = 0.0
                 
                 # 計算 Season_Year
-                # 10,11,12月 -> Year+1, 1-9月 -> Year
                 g_year = int(game_date[:4])
                 g_month = int(game_date[4:6])
                 season_year = g_year + 1 if g_month >= 10 else g_year
@@ -171,7 +178,7 @@ def parse_box_score_ultimate(url, session, retries=3, delay=15):
                     'Season_Year': season_year,
                     'Date': f"{game_date[:4]}-{game_date[4:6]}-{game_date[6:]}", # YYYY-MM-DD
                     'Team_Abbr': team_code,
-                    'G': 1, # 這裡 G 不重要，重要的是 GmSc
+                    'G': 1,
                     'Single_Game_GmSc': gmsc_val
                 })
 
@@ -184,7 +191,7 @@ def parse_box_score_ultimate(url, session, retries=3, delay=15):
         
     except Exception as e:
         print(f"    錯誤: 解析 {url} 出錯: {e}")
-        traceback.print_exc()
+        # traceback.print_exc() # 可選：如果想看詳細錯誤再打開
         return None, None
 
 # --- 【v300-Data 主程式】 ---
@@ -209,19 +216,45 @@ def run_v300_data_update():
 
     print(f"發現 {len(urls)} 場新比賽，開始抓取...")
     
-    # 2. 開始抓取
+    # 2. 開始抓取設定
     all_new_games = []
     all_new_players = []
+    
+    # === [關鍵修改] 設定 Session 與 Proxy ===
     session = requests.Session()
+    
+    # 從環境變數讀取 API Key
+    api_key = os.environ.get('SCRAPERAPI_KEY')
+    
+    if api_key:
+        print("✅ 偵測到 SCRAPERAPI_KEY，啟用代理模式...")
+        # 組合代理網址
+        proxy_url = f"http://scraperapi:{api_key}@proxy-server.scraperapi.com:8001"
+        
+        # 強制指定代理
+        session.proxies = {
+            "http": proxy_url,
+            "https": proxy_url
+        }
+        # 關閉 SSL 驗證以避免代理憑證錯誤
+        session.verify = False
+    else:
+        print("⚠️ 警告: 未偵測到 SCRAPERAPI_KEY，將使用直接連線 (可能導致 403)...")
     
     try:
         for i, url in enumerate(urls):
+            # 這裡傳入已經設定好 Proxy 的 session
             game_data, players_data = parse_box_score_ultimate(url, session)
             
-            if game_data: all_new_games.append(game_data)
-            if players_data: all_new_players.extend(players_data)
+            if game_data: 
+                all_new_games.append(game_data)
+                print(f"    -> 成功解析: {game_data['game_id']}")
             
-            sleep_time = np.random.uniform(5.0, 8.0)
+            if players_data: 
+                all_new_players.extend(players_data)
+            
+            # 隨機延遲 (避免過快但也不需要太久，因為有代理)
+            sleep_time = np.random.uniform(3.0, 6.0)
             print(f"    ... 禮貌性延遲 {sleep_time:.1f} 秒 ...")
             time.sleep(sleep_time)
             
@@ -240,6 +273,7 @@ def run_v300_data_update():
             'away_pts', 'away_fg', 'away_fga', 'away_fg3', 'away_fg3a', 'away_ft', 'away_fta',
             'away_orb', 'away_drb', 'away_trb', 'away_ast', 'away_stl', 'away_blk', 'away_tov', 'away_pf'
         ]
+        # 只保留存在的欄位 (避免報錯)
         existing_cols = [c for c in cols if c in new_game_df.columns]
         new_game_df = new_game_df[existing_cols]
         
