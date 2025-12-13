@@ -64,26 +64,43 @@ def merge_odds_data(df_pred, odds_file, pred_filename=None):
 
     try:
         df_o = pd.read_csv(odds_file)
-        odds_map = {}
-        for _, row in df_o.iterrows():
-            d = str(row['Date'])
-            h = normalize_team(row['Home_Abbr'])
-            a = normalize_team(row['Away_Abbr'])
-            odds_map[f"{d}_{h}"] = row['Odds_Home']
-            odds_map[f"{d}_{a}"] = row['Odds_Away']
         
-        home_odds_list = []
-        away_odds_list = []
-        home_ev_list = []
-        away_ev_list = []
-
+        # --- [修正 1] 判斷賠率檔是否有 Date 欄位 ---
+        has_date_col = 'Date' in df_o.columns
+        
+        # --- [修正 2] 預先解析預測檔的日期 ---
         default_date = None
         if pred_filename:
             match = re.search(r"predictions_(\d{4}-\d{2}-\d{2})\.csv", pred_filename)
             if match:
                 default_date = match.group(1)
+        
+        odds_map = {}
+        for _, row in df_o.iterrows():
+            # 邏輯：有日期欄位就用欄位，沒有就用預測檔的日期
+            if has_date_col:
+                d = str(row['Date'])
+            elif default_date:
+                d = default_date
+            else:
+                continue # 如果都沒有日期資訊，跳過此筆
+            
+            # 確保日期格式只有 YYYY-MM-DD (去掉可能的時間部分)
+            if " " in d: d = d.split(" ")[0]
+
+            h = normalize_team(row['Home_Abbr'])
+            a = normalize_team(row['Away_Abbr'])
+            odds_map[f"{d}_{h}"] = row['Odds_Home']
+            odds_map[f"{d}_{a}"] = row['Odds_Away']
+        
+        # --- 下面這裡保持不變，將賠率映射回預測表 ---
+        home_odds_list = []
+        away_odds_list = []
+        home_ev_list = []
+        away_ev_list = []
 
         for _, row in df_pred.iterrows():
+            # 取得該場比賽日期
             d = default_date
             if not d:
                 if 'date' in row: d = pd.to_datetime(row['date']).strftime('%Y-%m-%d')
@@ -99,6 +116,7 @@ def merge_odds_data(df_pred, odds_file, pred_filename=None):
             h = normalize_team(row['Home'])
             a = normalize_team(row['Away'])
             
+            # 查表
             odd_h = odds_map.get(f"{d}_{h}")
             odd_a = odds_map.get(f"{d}_{a}")
             
@@ -119,8 +137,11 @@ def merge_odds_data(df_pred, odds_file, pred_filename=None):
         df_pred['EV_Away'] = away_ev_list
         
         return df_pred
+
     except Exception as e:
         print(f"❌ 合併賠率時發生錯誤: {e}")
+        import traceback
+        traceback.print_exc() # 印出詳細錯誤以便除錯
         return df_pred
 
 def generate_strategy_table_html():
