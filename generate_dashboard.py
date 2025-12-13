@@ -129,26 +129,45 @@ def merge_odds_data(df_pred, odds_file, pred_filename=None):
         return df_pred
 
 # --- 數據計算功能 ---
-def calculate_global_stats_from_full_report():
-    """從 predictions_2026_full_report.csv 計算總勝率和總場次"""
+def calculate_advanced_stats():
+    """從 predictions_2026_full_report.csv 計算進階統計數據"""
     csv_file = "predictions_2026_full_report.csv"
     if not os.path.exists(csv_file):
-        # Fallback logic omitted for brevity, keeping primary logic
-        return 0, 0.0
+        return 0, 0.0, 0.0, "N/A"
 
     try:
         df = pd.read_csv(csv_file)
-        if df.empty: return 0, 0.0
+        if df.empty: return 0, 0.0, 0.0, "N/A"
         
+        # 確保依日期排序
+        df['date'] = pd.to_datetime(df['date'])
+        df = df.sort_values('date')
+        
+        # 1. 總場次 & 總勝率
         total_games = len(df)
         total_wins = df['Is_Correct'].sum()
         win_rate = (total_wins / total_games) * 100 if total_games > 0 else 0.0
-        return int(total_games), win_rate
+        
+        # 2. 近十場勝率 (Last 10)
+        last_10 = df.tail(10)
+        l10_wins = last_10['Is_Correct'].sum()
+        l10_games = len(last_10)
+        l10_rate = (l10_wins / l10_games) * 100 if l10_games > 0 else 0.0
+        
+        # 3. 昨日戰績 (Last Day Record)
+        last_date = df['date'].iloc[-1]
+        last_day_df = df[df['date'] == last_date]
+        day_wins = last_day_df['Is_Correct'].sum()
+        day_losses = len(last_day_df) - day_wins
+        day_record_str = f"{day_wins}-{day_losses}"
+        
+        return int(total_games), win_rate, l10_rate, day_record_str
+        
     except Exception as e:
-        print(f"⚠️ 計算全域數據時出錯: {e}")
-        return 0, 0.0
+        print(f"⚠️ 計算進階數據時出錯: {e}")
+        return 0, 0.0, 0.0, "N/A"
 
-# --- 修改功能：生成合併圖表 ---
+# --- 功能：生成合併圖表 ---
 def generate_combined_trend_chart():
     """讀取 predictions_2026_full_report.csv 並生成單一合併圖表"""
     csv_file = "predictions_2026_full_report.csv"
@@ -176,13 +195,11 @@ def generate_combined_trend_chart():
         dates = daily_stats['date']
 
         # --- 開始繪圖 (雙軸圖) ---
-        fig, ax1 = plt.subplots(figsize=(10, 5)) # 稍微寬一點適應右欄
+        fig, ax1 = plt.subplots(figsize=(10, 5)) 
 
         # Bar Chart (左軸): 場次
         bar_width = 0.6
-        # 總場次 (灰色背景)
         ax1.bar(dates, daily_stats['Total_Games'], color='#e9ecef', label='Total Games', width=bar_width)
-        # 命中場次 (綠色前景)
         ax1.bar(dates, daily_stats['Wins'], color='#28a745', label='Correct', width=bar_width, alpha=0.8)
         
         ax1.set_ylabel('Games Count', color='#555')
@@ -194,10 +211,9 @@ def generate_combined_trend_chart():
         
         ax2.set_ylabel('Win Rate', color='#2a5298')
         ax2.tick_params(axis='y', labelcolor='#2a5298')
-        ax2.set_ylim(0, 1.05) # 固定 0-100%
+        ax2.set_ylim(0, 1.05) 
         ax2.yaxis.set_major_formatter(plt.FuncFormatter(lambda y, _: '{:.0%}'.format(y)))
         
-        # 標題與圖例
         plt.title('Daily Performance: Win Rate & Volume Trend', fontsize=12, pad=10)
         
         # 合併圖例
@@ -281,31 +297,62 @@ def generate_strategy_table_html():
         return f'<p class="text-danger text-center">讀取策略報告失敗: {e}</p>'
 
 def generate_html_report(df_parlay, df_raw, last_updated_time, raw_pred_file):
-    """生成 HTML 報告 (v4.4 Layout Update)"""
+    """生成 HTML 報告 (v4.5 Advanced Stats)"""
     
-    total_games, avg_win_rate = calculate_global_stats_from_full_report()
+    # 獲取進階統計數據
+    total_games, avg_win_rate, l10_rate, day_record = calculate_advanced_stats()
     
+    # 定義 Last 10 顏色
+    l10_color = "text-success" if l10_rate >= 50 else "text-danger"
+    if l10_rate >= 70: l10_color = "text-success fw-bold"
+    
+    # 統計卡片 HTML (4欄設計)
     stats_cards_html = f"""
     <div class="row mb-3">
-        <div class="col-md-6 col-lg-3">
-            <div class="card-box p-3 border-start border-4 border-primary">
+        <div class="col-6 col-lg-3 mb-2">
+            <div class="card-box p-3 border-start border-4 border-primary h-100">
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
-                        <div class="text-muted small text-uppercase fw-bold">總預測場次 (Total Games)</div>
+                        <div class="text-muted small text-uppercase fw-bold">總場次 (Total)</div>
                         <div class="h3 mb-0 fw-bold text-dark">{total_games}</div>
                     </div>
                     <div class="text-primary fs-1 opacity-25"><i class="fas fa-basketball-ball"></i></div>
                 </div>
             </div>
         </div>
-        <div class="col-md-6 col-lg-3">
-            <div class="card-box p-3 border-start border-4 border-success">
+        
+        <div class="col-6 col-lg-3 mb-2">
+            <div class="card-box p-3 border-start border-4 border-success h-100">
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
-                        <div class="text-muted small text-uppercase fw-bold">平均勝率 (Win Rate)</div>
+                        <div class="text-muted small text-uppercase fw-bold">平均勝率 (Avg)</div>
                         <div class="h3 mb-0 fw-bold text-success">{avg_win_rate:.1f}%</div>
                     </div>
                     <div class="text-success fs-1 opacity-25"><i class="fas fa-chart-pie"></i></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-6 col-lg-3 mb-2">
+            <div class="card-box p-3 border-start border-4 border-info h-100">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="text-muted small text-uppercase fw-bold">近十場 (L10)</div>
+                        <div class="h3 mb-0 {l10_color}">{l10_rate:.0f}%</div>
+                    </div>
+                    <div class="text-info fs-1 opacity-25"><i class="fas fa-fire-alt"></i></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-6 col-lg-3 mb-2">
+            <div class="card-box p-3 border-start border-4 border-warning h-100">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="text-muted small text-uppercase fw-bold">昨日戰績 (Last Day)</div>
+                        <div class="h3 mb-0 fw-bold text-dark">{day_record}</div>
+                    </div>
+                    <div class="text-warning fs-1 opacity-25"><i class="fas fa-history"></i></div>
                 </div>
             </div>
         </div>
@@ -349,7 +396,7 @@ def generate_html_report(df_parlay, df_raw, last_updated_time, raw_pred_file):
 
     strategy_perf_html = generate_strategy_table_html()
     
-    # 這裡生成合併圖表
+    # 生成合併圖表
     combined_chart_html = generate_combined_trend_chart()
     
     chart_profit_html = ""
@@ -367,7 +414,7 @@ def generate_html_report(df_parlay, df_raw, last_updated_time, raw_pred_file):
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>NBA AI 戰情室 v4.4</title>
+        <title>NBA AI 戰情室 v4.5</title>
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
         <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
         <style>
@@ -433,7 +480,7 @@ def generate_html_report(df_parlay, df_raw, last_updated_time, raw_pred_file):
             </div>
         </div>
 
-        <footer>NBA AI System v4.4 • Powered by Random Forest & Parlay Optimizer</footer>
+        <footer>NBA AI System v4.5 • Powered by Random Forest & Parlay Optimizer</footer>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
@@ -447,7 +494,7 @@ def generate_html_report(df_parlay, df_raw, last_updated_time, raw_pred_file):
     print(f"✅ Dashboard 已生成: index.html")
 
 def main():
-    print("\n🌐 啟動戰情室網頁生成器 v4.4 (Layout Adjustment)...")
+    print("\n🌐 啟動戰情室網頁生成器 v4.5 (Advanced Stats)...")
     
     parlay_file = "Daily_Parlay_Recommendations.csv"
     if os.path.exists(parlay_file):
