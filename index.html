@@ -1,208 +1,254 @@
 
     <!DOCTYPE html>
-    <html lang="zh-Hant">
+    <html lang="zh-TW">
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>NBA AI 戰情室</title>
+        <title>NBA AI 戰情室 v3.9</title>
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
         <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-        <link href="https://fonts.googleapis.com/css2?family=Teko:wght@400;600&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
         <style>
-            :root { --primary: #1a252f; --accent: #3498db; --bg: #f0f2f5; }
-            body { background-color: var(--bg); font-family: 'Roboto', sans-serif; color: #2c3e50; }
-            .navbar { background: #2c3e50; padding: 1rem; }
-            .navbar-brand { font-family: 'Teko', sans-serif; font-size: 1.8rem; letter-spacing: 1px; color: #fff !important; }
-            
-            .stat-card { background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border-left: 5px solid #ddd; }
-            .stat-card.border-primary { border-left-color: #3498db; }
-            .stat-card.border-success { border-left-color: #2ecc71; }
-            .stat-card.border-info { border-left-color: #17a2b8; }
-            .stat-card.border-warning { border-left-color: #f1c40f; }
-            
-            .stat-title { font-size: 0.85rem; text-transform: uppercase; color: #7f8c8d; font-weight: 600; }
-            .stat-value { font-size: 1.8rem; font-weight: 700; color: #2c3e50; }
-            
-            .section-title { font-family: 'Teko', sans-serif; font-size: 1.5rem; border-left: 5px solid var(--accent); padding-left: 10px; margin-bottom: 20px; color: var(--primary); }
-            
-            .card-box { background: #fff; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); padding: 0; overflow: hidden; margin-bottom: 30px; }
-            .card-header-custom { background: #f8f9fa; padding: 15px 20px; border-bottom: 1px solid #eee; font-weight: 600; display: flex; justify-content: space-between; align-items: center; }
-            
-            .team-logo { width: 30px; height: 30px; object-fit: contain; }
-            
-            table { margin-bottom: 0 !important; }
-            thead th { background: #fdfdfd !important; font-size: 0.85rem; color: #999; text-transform: uppercase; }
-            
-            footer { margin-top: 50px; padding: 20px; text-align: center; color: #aaa; font-size: 0.9rem; }
+            body { background-color: #f4f6f9; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+            .header-bar { background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); color: white; padding: 20px 0; margin-bottom: 30px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+            .card-box { background: white; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin-bottom: 20px; overflow: hidden; }
+            .card-header-custom { padding: 15px 20px; font-weight: bold; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
+            .team-logo-sm { width: 30px; height: 30px; object-fit: contain; }
+            .team-logo-xs { width: 24px; height: 24px; object-fit: contain; margin-right: 5px; }
+            .section-title { font-size: 1.1rem; color: #555; margin-bottom: 15px; font-weight: 600; border-left: 4px solid #1e3c72; padding-left: 10px; }
+            footer { text-align: center; color: #888; padding: 20px; font-size: 0.9rem; }
+            /* 表格文字微調 */
+            .table-sm td, .table-sm th { font-size: 0.9rem; }
         </style>
     </head>
     <body>
 
-    <nav class="navbar navbar-dark mb-4">
+    <div class="header-bar">
         <div class="container">
-            <a class="navbar-brand" href="#"><i class="fas fa-basketball-ball me-2 text-warning"></i> NBA AI 戰情室</a>
-            <span class="text-white-50 small">Updated: 2025-12-08 21:20</span>
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="mb-0"><i class="fas fa-basketball-ball me-2"></i>NBA AI 運彩戰情室</h2>
+                    <small class="opacity-75">Daily Sports Betting Analysis Dashboard</small>
+                </div>
+                <div class="text-end">
+                    <div class="badge bg-light text-primary fs-6">
+                        <i class="far fa-clock me-1"></i> Update: 2025-12-13 17:41
+                    </div>
+                </div>
+            </div>
         </div>
-    </nav>
+    </div>
 
     <div class="container">
         
-            <div class="row g-3 mb-4">
-                <div class="col-md-3"><div class="stat-card border-primary">
-                    <div class="stat-title">歷史總預測</div>
-                    <div class="stat-value">347</div>
-                </div></div>
-                <div class="col-md-3"><div class="stat-card border-success">
-                    <div class="stat-title">總體勝率</div>
-                    <div class="stat-value">67.7%</div>
-                </div></div>
-                <div class="col-md-3"><div class="stat-card border-info">
-                    <div class="stat-title">近 10 場勝率</div>
-                    <div class="stat-value">50.0%</div>
-                </div></div>
-                <div class="col-md-3"><div class="stat-card border-warning">
-                    <div class="stat-title">高信心準確率</div>
-                    <div class="stat-value">80.7%</div>
-                </div></div>
-            </div>
-            
-
         <div class="row">
-            <div class="col-lg-8">
-                <div class="section-title">今日核心策略 (Strategy)</div>
-                
-                <div class="card-box">
-                    <div class="card-header-custom text-success">
-                        <span><i class="fas fa-crosshairs me-2"></i>最佳單場推薦</span>
-                        <span class="badge bg-success">Top Picks</span>
-                    </div>
-                    <div class="table-responsive">
-                        <table class="dataframe table table-hover align-middle mb-0">
-  <thead>
-    <tr style="text-align: right;">
-      <th>Logo</th>
-      <th>球隊</th>
-      <th>主客</th>
-      <th>對手</th>
-      <th>勝率</th>
-      <th>賠率</th>
-      <th>EV</th>
-      <th>訊號</th>
-      <th>注碼</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td><img src="https://a.espncdn.com/i/teamlogos/nba/500/no.png" class="team-logo" alt="NOP"></td>
-      <td>NOP</td>
-      <td>Home</td>
-      <td>SAS</td>
-      <td><span class="fw-bold text-dark" style="font-size: 1.1rem;">47%</span></td>
-      <td>3.3</td>
-      <td><span class="fw-bold text-success">+0.55</span></td>
-      <td>🚀 BET HOME (High EV)</td>
-      <td>✨ 0.5u</td>
-    </tr>
-  </tbody>
-</table>
-                    </div>
-                </div>
-                
+            <div class="col-lg-7">
+                <div class="section-title">今日核心推薦 (Core Recommendations)</div>
                 <div class="card-box">
                     <div class="card-header-custom text-primary">
-                        <span><i class="fas fa-link me-2"></i>最佳串關推薦 (Best Parlays)</span>
-                        <span class="badge bg-warning text-dark">Optimization: 60% ROI Strategy</span>
+                        <span><i class="fas fa-link me-2"></i>最佳串關組合 (Best Parlays)</span>
+                        <span class="badge bg-warning text-dark">AI Optimized</span>
                     </div>
-                    <table class="dataframe table table-bordered align-middle">
-  <thead>
-    <tr style="text-align: right;">
-      <th>類型</th>
-      <th>組合</th>
-      <th>賠率</th>
-      <th>期望值</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td><span class="badge bg-primary"><i class="fas fa-gem"></i> 💎 高價值</span></td>
-      <td>PHO + NOP</td>
-      <td>10.56</td>
-      <td><span class="fw-bold text-success">+0.69</span></td>
-    </tr>
-    <tr>
-      <td><span class="badge bg-primary"><i class="fas fa-gem"></i> 💎 高價值</span></td>
-      <td>SAC + NOP</td>
-      <td>6.76</td>
-      <td><span class="fw-bold text-success">+0.65</span></td>
-    </tr>
-    <tr>
-      <td><span class="badge bg-primary"><i class="fas fa-gem"></i> 💎 高價值</span></td>
-      <td>SAC + PHO</td>
-      <td>6.56</td>
-      <td><span class="fw-bold text-success">+0.16</span></td>
-    </tr>
-  </tbody>
-</table>
+                    <div class="p-0">
+                        
+        <table class="table table-hover mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th width="20%">策略類型</th>
+                    <th width="40%">組合 (Combo)</th>
+                    <th width="20%" class="text-center">總賠率</th>
+                    <th width="20%" class="text-center">總期望值</th>
+                </tr>
+            </thead>
+            <tbody>
+                
+            <tr class="align-middle">
+                <td><span class="badge bg-secondary">🏠 主場優勢</span></td>
+                <td>
+                    <div class="d-flex align-items-center">
+                        <img src="https://a.espncdn.com/i/teamlogos/nba/500/mem.png" class="team-logo-sm"> <span class="fw-bold mx-1">MEM</span> 
+                        <span class="text-muted mx-2">+</span> 
+                        <img src="https://a.espncdn.com/i/teamlogos/nba/500/dal.png" class="team-logo-sm"> <span class="fw-bold mx-1">DAL</span>
+                    </div>
+                </td>
+                <td class="text-center fw-bold">1.57</td>
+                <td class="text-center text-muted">-0.13</td>
+            </tr>
+            
+            </tbody>
+        </table>
+        
+                    </div>
                 </div>
+                
+                
+        <div class="card-box mt-4">
+            <div class="card-header-custom text-info">
+                <span><i class="fas fa-chart-line me-2"></i>策略回測分析 (Strategy Backtest)</span>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6 mb-3"><img src="chart_cumulative_profit.png" class="img-fluid rounded border shadow-sm" alt="獲利曲線"></div><div class="col-md-6 mb-3"><img src="chart_roi_summary.png" class="img-fluid rounded border shadow-sm" alt="ROI排行"></div>
+                </div>
+                <p class="text-muted small text-center mt-2">
+                    <i class="fas fa-info-circle"></i> 此圖表由 v980 自動生成，展示各策略在歷史數據上的真實表現。
+                </p>
+            </div>
+        </div>
+        
             </div>
 
-            <div class="col-lg-4">
-                <div class="section-title">全賽事預測 (All Games)</div>
+            <div class="col-lg-5">
+                <div class="section-title">全賽事預測 & 賠率 (All Games & Odds)</div>
                 <div class="card-box">
                     <div class="card-header-custom text-secondary">
                         <span><i class="fas fa-list me-2"></i>今日總覽</span>
-                        <span class="badge bg-light text-dark">predictions_2025-12-08.csv</span>
+                        <span class="badge bg-light text-dark">predictions_2025-12-12.csv</span>
                     </div>
                     <div class="table-responsive" style="max-height: 800px; overflow-y: auto;">
-                        <table class="dataframe table table-sm table-striped align-middle text-center">
-  <thead>
-    <tr style="text-align: right;">
-      <th>日期</th>
-      <th>主隊</th>
-      <th>主賠率</th>
-      <th>客賠率</th>
-      <th>客隊</th>
-      <th>主勝率</th>
-      <th>信心</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td>2025-12-08</td>
-      <td><img src="https://a.espncdn.com/i/teamlogos/nba/500/ind.png" class="team-logo" alt="IND"> IND</td>
-      <td>1.46</td>
-      <td>2.05</td>
-      <td><img src="https://a.espncdn.com/i/teamlogos/nba/500/sac.png" class="team-logo" alt="SAC"> SAC</td>
-      <td><span class="fw-bold text-dark" style="font-size: 1.1rem;">48%</span></td>
-      <td>Toss-up</td>
-    </tr>
-    <tr>
-      <td>2025-12-08</td>
-      <td><img src="https://a.espncdn.com/i/teamlogos/nba/500/min.png" class="team-logo" alt="MIN"> MIN</td>
-      <td>1.16</td>
-      <td>3.20</td>
-      <td><img src="https://a.espncdn.com/i/teamlogos/nba/500/phx.png" class="team-logo" alt="PHO"> PHO</td>
-      <td><span class="fw-bold text-success" style="font-size: 1.1rem;">66%</span></td>
-      <td>🟢 High (Home)</td>
-    </tr>
-    <tr>
-      <td>2025-12-08</td>
-      <td><img src="https://a.espncdn.com/i/teamlogos/nba/500/no.png" class="team-logo" alt="NOP"> NOP</td>
-      <td>3.30</td>
-      <td>1.15</td>
-      <td><img src="https://a.espncdn.com/i/teamlogos/nba/500/sas.png" class="team-logo" alt="SAS"> SAS</td>
-      <td><span class="fw-bold text-dark" style="font-size: 1.1rem;">47%</span></td>
-      <td>Toss-up</td>
-    </tr>
-  </tbody>
-</table>
+                        
+        <table class="table table-sm table-striped align-middle">
+            <thead class="table-dark small">
+                <tr>
+                    <th class="text-center">主隊</th>
+                    <th class="text-center">客隊</th>
+                    <th>預測勝率</th>
+                    <th class="text-center">主賠</th>
+                    <th class="text-center">客賠</th>
+                    <th class="text-center">主EV</th>
+                    <th class="text-center">客EV</th>
+                </tr>
+            </thead>
+            <tbody>
+                
+            <tr>
+                <td class="text-center"><img src="https://a.espncdn.com/i/teamlogos/nba/500/cha.png" class="team-logo-xs"> CHO</td>
+                <td class="text-center"><img src="https://a.espncdn.com/i/teamlogos/nba/500/chi.png" class="team-logo-xs"> CHI</td>
+                <td style="width: 30%;">
+                    <div class="d-flex justify-content-between small mb-1">
+                        <span>CHO (53.0%)</span>
+                    </div>
+                    <div class="progress" style="height: 6px;">
+                        <div class="progress-bar bg-success" role="progressbar" style="width: 53.0%"></div>
+                    </div>
+                </td>
+                <td class="text-center small">1.93</td>
+                <td class="text-center small">1.53</td>
+                <td class="text-center small"><span class="text-success fw-bold">+0.02</span></td>
+                <td class="text-center small"><span class="text-muted">-0.28</span></td>
+            </tr>
+            
+            <tr>
+                <td class="text-center"><img src="https://a.espncdn.com/i/teamlogos/nba/500/det.png" class="team-logo-xs"> DET</td>
+                <td class="text-center"><img src="https://a.espncdn.com/i/teamlogos/nba/500/atl.png" class="team-logo-xs"> ATL</td>
+                <td style="width: 30%;">
+                    <div class="d-flex justify-content-between small mb-1">
+                        <span>DET (62.0%)</span>
+                    </div>
+                    <div class="progress" style="height: 6px;">
+                        <div class="progress-bar bg-success" role="progressbar" style="width: 62.0%"></div>
+                    </div>
+                </td>
+                <td class="text-center small">1.25</td>
+                <td class="text-center small">2.7</td>
+                <td class="text-center small"><span class="text-muted">-0.22</span></td>
+                <td class="text-center small"><span class="text-success fw-bold">+0.03</span></td>
+            </tr>
+            
+            <tr>
+                <td class="text-center"><img src="https://a.espncdn.com/i/teamlogos/nba/500/phi.png" class="team-logo-xs"> PHI</td>
+                <td class="text-center"><img src="https://a.espncdn.com/i/teamlogos/nba/500/ind.png" class="team-logo-xs"> IND</td>
+                <td style="width: 30%;">
+                    <div class="d-flex justify-content-between small mb-1">
+                        <span>PHI (70.0%)</span>
+                    </div>
+                    <div class="progress" style="height: 6px;">
+                        <div class="progress-bar bg-success" role="progressbar" style="width: 70.0%"></div>
+                    </div>
+                </td>
+                <td class="text-center small">1.33</td>
+                <td class="text-center small">2.35</td>
+                <td class="text-center small"><span class="text-muted">-0.07</span></td>
+                <td class="text-center small"><span class="text-muted">-0.29</span></td>
+            </tr>
+            
+            <tr>
+                <td class="text-center"><img src="https://a.espncdn.com/i/teamlogos/nba/500/wsh.png" class="team-logo-xs"> WAS</td>
+                <td class="text-center"><img src="https://a.espncdn.com/i/teamlogos/nba/500/cle.png" class="team-logo-xs"> CLE</td>
+                <td style="width: 30%;">
+                    <div class="d-flex justify-content-between small mb-1">
+                        <span>CLE (68.0%)</span>
+                    </div>
+                    <div class="progress" style="height: 6px;">
+                        <div class="progress-bar bg-danger" role="progressbar" style="width: 68.0%"></div>
+                    </div>
+                </td>
+                <td class="text-center small">-</td>
+                <td class="text-center small">-</td>
+                <td class="text-center small"><span class="text-muted">+nan</span></td>
+                <td class="text-center small"><span class="text-muted">+nan</span></td>
+            </tr>
+            
+            <tr>
+                <td class="text-center"><img src="https://a.espncdn.com/i/teamlogos/nba/500/mem.png" class="team-logo-xs"> MEM</td>
+                <td class="text-center"><img src="https://a.espncdn.com/i/teamlogos/nba/500/utah.png" class="team-logo-xs"> UTA</td>
+                <td style="width: 30%;">
+                    <div class="d-flex justify-content-between small mb-1">
+                        <span>MEM (73.0%)</span>
+                    </div>
+                    <div class="progress" style="height: 6px;">
+                        <div class="progress-bar bg-success" role="progressbar" style="width: 73.0%"></div>
+                    </div>
+                </td>
+                <td class="text-center small">1.28</td>
+                <td class="text-center small">2.55</td>
+                <td class="text-center small"><span class="text-muted">-0.07</span></td>
+                <td class="text-center small"><span class="text-muted">-0.31</span></td>
+            </tr>
+            
+            <tr>
+                <td class="text-center"><img src="https://a.espncdn.com/i/teamlogos/nba/500/dal.png" class="team-logo-xs"> DAL</td>
+                <td class="text-center"><img src="https://a.espncdn.com/i/teamlogos/nba/500/bkn.png" class="team-logo-xs"> BRK</td>
+                <td style="width: 30%;">
+                    <div class="d-flex justify-content-between small mb-1">
+                        <span>DAL (76.0%)</span>
+                    </div>
+                    <div class="progress" style="height: 6px;">
+                        <div class="progress-bar bg-success" role="progressbar" style="width: 76.0%"></div>
+                    </div>
+                </td>
+                <td class="text-center small">1.23</td>
+                <td class="text-center small">2.8</td>
+                <td class="text-center small"><span class="text-muted">-0.07</span></td>
+                <td class="text-center small"><span class="text-muted">-0.33</span></td>
+            </tr>
+            
+            <tr>
+                <td class="text-center"><img src="https://a.espncdn.com/i/teamlogos/nba/500/gs.png" class="team-logo-xs"> GSW</td>
+                <td class="text-center"><img src="https://a.espncdn.com/i/teamlogos/nba/500/min.png" class="team-logo-xs"> MIN</td>
+                <td style="width: 30%;">
+                    <div class="d-flex justify-content-between small mb-1">
+                        <span>MIN (50.0%)</span>
+                    </div>
+                    <div class="progress" style="height: 6px;">
+                        <div class="progress-bar bg-danger" role="progressbar" style="width: 50.0%"></div>
+                    </div>
+                </td>
+                <td class="text-center small">1.38</td>
+                <td class="text-center small">2.25</td>
+                <td class="text-center small"><span class="text-muted">-0.31</span></td>
+                <td class="text-center small"><span class="text-success fw-bold">+0.12</span></td>
+            </tr>
+            
+            </tbody>
+        </table>
+        
                     </div>
                 </div>
             </div>
         </div>
 
         <footer>
-            NBA AI System v3.7 • Powered by Random Forest & Parlay Optimizer
+            NBA AI System v3.9 • Powered by Random Forest & Parlay Optimizer
         </footer>
     </div>
 

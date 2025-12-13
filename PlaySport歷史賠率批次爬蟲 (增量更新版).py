@@ -4,7 +4,8 @@ import pandas as pd
 import time
 import datetime
 import random
-import os  # 新增：用於檢查檔案
+import os
+import re
 
 # --- 1. 隊名對照表 ---
 TEAM_MAP = {
@@ -20,210 +21,217 @@ TEAM_MAP = {
     '爵士': 'UTA', '巫師': 'WAS'
 }
 
+def parse_odds_from_td(td_tag):
+    """從賠率格子中提取數字"""
+    if not td_tag:
+        return None
+    try:
+        # 移除 HTML 標籤，只留文字
+        text = td_tag.get_text().strip()
+        # 尋找浮點數 (如 1.75, 2.25)
+        # 排除日期格式或百分比
+        matches = re.findall(r"(\d+\.\d+)", text)
+        for m in matches:
+            val = float(m)
+            # 運彩不讓分賠率通常在 1.01 到 15.0 之間
+            if 1.01 <= val <= 15.0:
+                return val
+    except:
+        pass
+    return None
+
 def get_playsport_odds_robust(target_date_str):
     """
-    抓取單日賠率 (邏輯不變)
-    target_date_str: YYYYMMDD
+    抓取單日賠率 (針對 gamesData/result 歷史賽果頁面優化版)
+    target_date_str: YYYYMMDD (這是台灣時間)
     """
     url = f"https://www.playsport.cc/gamesData/result?allianceid=3&gametime={target_date_str}"
-    # print(f"  正在抓取: {target_date_str} ...")
     
     headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
     }
-    
+
     try:
-        response = requests.get(url, headers=headers, timeout=10)
-        soup = BeautifulSoup(response.content, 'lxml')
+        resp = requests.get(url, headers=headers, timeout=10)
+        resp.encoding = 'utf-8' # 強制 UTF-8
         
-        game_rows = soup.find_all('tr', attrs={'gameid': True})
-        if not game_rows:
-            main_table = soup.find('table', class_='predictgame-table')
-            if main_table:
-                game_rows = main_table.find_all('tr', attrs={'gameid': True})
-        
-        if not game_rows:
+        if resp.status_code != 200:
+            print(f"   ⚠️ 請求失敗 ({resp.status_code}) - URL: {url}")
             return []
             
-        games_dict = {}
-        for row in game_rows:
-            gid = row['gameid']
-            if gid not in games_dict: games_dict[gid] = []
-            games_dict[gid].append(row)
-            
-        daily_data = []
+        soup = BeautifulSoup(resp.text, 'html.parser')
         
-        for gid, rows in games_dict.items():
-            if len(rows) < 2: continue 
-            
-            r_away = rows[0]
-            r_home = rows[1]
-            
-            # --- 解析隊名 ---
-            def extract_team_name(row):
-                td = row.find('td', class_='td-teaminfo')
-                if not td: return None
-                links = td.find_all('a')
-                for link in links:
-                    txt = link.text.strip()
-                    if txt in TEAM_MAP: return txt
-                return None
+        # --- 計算美國時間 (用於存檔) ---
+        tw_date = datetime.datetime.strptime(target_date_str, "%Y%m%d").date()
+        us_date = tw_date - datetime.timedelta(days=1)
+        date_for_save = us_date.strftime("%Y-%m-%d")
+        # ---------------------------
 
-            teams_in_away_row = []
-            td_away = r_away.find('td', class_='td-teaminfo')
-            if td_away:
-                for link in td_away.find_all('a'):
-                    txt = link.text.strip()
-                    if txt in TEAM_MAP: teams_in_away_row.append(txt)
+        games_data = []
+        
+        # 尋找所有比賽的第一行 (包含 td-teaminfo 的那一行)
+        # 這些 tr 通常帶有 gameid 屬性
+        rows = soup.find_all('tr', attrs={'gameid': True})
+        
+        # 使用 set 避免重複處理 (因為有些結構可能有嵌套)
+        processed_gameids = set()
+
+        for row in rows:
+            game_id = row['gameid']
+            if game_id in processed_gameids:
+                continue
             
-            if len(teams_in_away_row) >= 2:
-                away_name_ch = teams_in_away_row[0]
-                home_name_ch = teams_in_away_row[1]
-            else:
-                away_name_ch = extract_team_name(r_away)
-                home_name_ch = extract_team_name(r_home)
+            # 檢查這一行是否包含球隊資訊 (td-teaminfo)
+            # 只有包含球隊資訊的行，才是我們處理的起點 (客隊行)
+            team_info_td = row.find('td', class_='td-teaminfo')
+            if not team_info_td:
+                continue # 如果這行沒有球隊資訊，跳過 (這可能是主隊行，稍後會被自動抓取)
             
-            if not away_name_ch or not home_name_ch:
+            # --- 1. 解析隊名 ---
+            # td-teaminfo 裡面包含兩個隊伍的連結或文字
+            # 順序通常是：上為客隊，下為主隊
+            # 我們直接抓取該格子內的所有文字，並依序比對
+            all_text = team_info_td.get_text()
+            
+            found_teams = []
+            # 這裡我們需要保留順序，所以不能用字典迭代，改用掃描文字的方式
+            # 但最簡單的方法是：找出所有符合我們 TEAM_MAP 的關鍵字
+            # 為了避免誤判 (例如 "公牛" 和 "小牛"?)，我們直接尋找 map 中的 key
+            
+            # 更好的方法：找裡面的 <a> 標籤，通常隊名都在 <a> 裡面
+            links = team_info_td.find_all('a')
+            for link in links:
+                t_text = link.get_text().strip()
+                for name, code in TEAM_MAP.items():
+                    if name in t_text:
+                        found_teams.append(code)
+                        break # 找到對應代碼就換下一個 link
+            
+            # 如果用 <a> 找不到 (有時可能沒連結)，再試試純文字暴力搜尋
+            if len(found_teams) < 2:
+                found_teams = []
+                for name, code in TEAM_MAP.items():
+                    if name in all_text:
+                        # 這裡有個小問題：如果文字是 "洛杉磯湖人"，"湖人" 會被對到。
+                        # 我們假設 map 裡的 key 是足夠獨特的
+                        # 為了確保順序，這有點難，暫時假設 <a> 標籤解析成功率較高
+                        # 若真的失敗，使用備用方案：
+                        pass
+
+            # 若還是抓不到兩隊，跳過
+            if len(found_teams) < 2:
+                # Debug: print(f"   跳過: 抓不到兩個隊名 - {all_text.strip()[:20]}...")
+                continue
+            
+            # 按照 PlaySport 賽果頁面慣例：第一個是客隊，第二個是主隊
+            away_code = found_teams[0]
+            home_code = found_teams[1]
+            
+            if away_code == home_code:
                 continue
 
-            # --- 解析賠率 ---
-            def extract_odd(row):
-                if not row: return None
-                td = row.find('td', class_='td-bank-bet03')
-                if not td: return None
-                txt = td.get_text().strip()
-                import re
-                nums = re.findall(r"[-+]?\d*\.\d+|\d+", txt)
-                if nums: return float(nums[-1])
-                return None
-
-            odd_away = extract_odd(r_away)
-            odd_home = extract_odd(r_home)
+            # --- 2. 解析賠率 ---
+            # 客隊賠率：在當前行 (row) 的 td-bank-bet03
+            # 主隊賠率：在下一行 (next_sibling) 的 td-bank-bet03
             
-            if odd_away is None or odd_home is None:
-                continue
-
-            away_abbr = TEAM_MAP.get(away_name_ch, "UNKNOWN")
-            home_abbr = TEAM_MAP.get(home_name_ch, "UNKNOWN")
+            # 客隊賠率
+            odds_away = parse_odds_from_td(row.find('td', class_='td-bank-bet03'))
             
-            daily_data.append({
-                'Away_Abbr': away_abbr,
-                'Home_Abbr': home_abbr,
-                'Odds_Away': odd_away,
-                'Odds_Home': odd_home
-            })
+            # 主隊賠率 (尋找下一個 tr)
+            next_row = row.find_next_sibling('tr')
+            odds_home = None
+            if next_row and next_row.get('gameid') == game_id:
+                odds_home = parse_odds_from_td(next_row.find('td', class_='td-bank-bet03'))
+            
+            # 若下一行找不到，有時候可能是結構問題，再試試 next_sibling 的 next_sibling
+            # 但通常 PlaySport 結構很固定
+            
+            if odds_away and odds_home:
+                games_data.append({
+                    'Date': date_for_save,
+                    'Away_Abbr': away_code,
+                    'Home_Abbr': home_code,
+                    'Odds_Away': odds_away,
+                    'Odds_Home': odds_home
+                })
+                # 標記此 game_id 已處理
+                processed_gameids.add(game_id)
         
-        return daily_data
+        return games_data
 
     except Exception as e:
-        print(f"  ❌ 抓取失敗 ({target_date_str}): {e}")
+        print(f"   ⚠️ 解析錯誤: {e}")
         return []
 
 def scrape_playsport_history(start_date, end_date):
-    """
-    批次抓取指定範圍的賠率
-    """
-    all_history = []
-    current_date = start_date
+    """批次抓取範圍內的賠率"""
+    all_data = []
+    current = start_date
     
-    total_days = (end_date - start_date).days + 1
-    processed_count = 0
-
-    while current_date <= end_date:
-        date_str = current_date.strftime("%Y%m%d")
-        display_date = current_date.strftime("%Y-%m-%d")
+    while current <= end_date:
+        date_str = current.strftime("%Y%m%d")
         
-        processed_count += 1
-        print(f"[{processed_count}/{total_days}] 正在處理: {display_date} ... ", end="", flush=True)
+        # 顯示正在抓取，並提示對應的美國日期
+        us_date_display = current - datetime.timedelta(days=1)
+        print(f"   正在抓取: {date_str} (對應美國時間 {us_date_display}) ...")
         
-        day_data = get_playsport_odds_robust(date_str)
-        
-        if day_data:
-            print(f"✅ 抓到 {len(day_data)} 場")
-            for d in day_data:
-                d['Date'] = display_date # 加入日期欄位
-                all_history.append(d)
+        daily_data = get_playsport_odds_robust(date_str)
+        if daily_data:
+            print(f"     -> 成功抓取 {len(daily_data)} 場")
+            all_data.extend(daily_data)
         else:
-            print("⚠️ 無數據")
-        
-        current_date += datetime.timedelta(days=1)
-        
+            print("     -> 無資料或解析失敗")
+            
+        current += datetime.timedelta(days=1)
         # 隨機延遲，避免被鎖 IP
-        time.sleep(random.uniform(0.5, 1.5))
+        time.sleep(random.uniform(1.0, 2.0)) 
         
-    return all_history
+    return all_data
 
-def main():
-    # 設定檔案名稱
+# --- 主程式 ---
+if __name__ == "__main__":
     filename = "odds_2026_full_season.csv"
     
-    # 預設：如果沒有檔案，從賽季第一天開始
-    season_start = datetime.date(2024, 10, 22)
-    
-    # 設定結束日 (昨天，因為今天的比賽可能還沒打完或賠率還在變)
-    end_date = datetime.date.today() - datetime.timedelta(days=1)
-    
+    # 賽季開始日期 (2025-10-22 台灣時間)
+    season_start = datetime.date(2025, 10, 22) 
+    end_date = datetime.date.today() + datetime.timedelta(days=1) 
+
     existing_df = pd.DataFrame()
     start_date = season_start
 
-    # 1. 檢查檔案是否存在，決定 start_date
     if os.path.exists(filename):
-        print(f"📂 發現現有檔案: {filename}")
         try:
             existing_df = pd.read_csv(filename)
-            if not existing_df.empty and 'Date' in existing_df.columns:
-                # 確保日期格式正確
-                existing_df['Date'] = pd.to_datetime(existing_df['Date']).dt.date
+            if not existing_df.empty:
+                last_us_date_str = existing_df['Date'].max()
+                last_us_date = datetime.datetime.strptime(last_us_date_str, "%Y-%m-%d").date()
                 
-                # 找出最後一天
-                last_date = existing_df['Date'].max()
-                print(f"   目前數據更新至: {last_date}")
+                # 增量更新邏輯
+                start_date = last_us_date + datetime.timedelta(days=2) 
                 
-                # 設定新的開始日期 = 最後一天 + 1
-                start_date = last_date + datetime.timedelta(days=1)
+                print(f"📂 發現舊檔案，最後記錄日期 (US): {last_us_date_str}")
+                print(f"   -> 上次爬取的台灣日期應為: {last_us_date + datetime.timedelta(days=1)}")
+                print(f"   -> 本次將從台灣時間 {start_date} 開始更新")
             else:
-                print("   ⚠️ 檔案似乎為空或格式不符，將重新完整抓取。")
-        except Exception as e:
-            print(f"   ⚠️ 讀取舊檔失敗 ({e})，將重新完整抓取。")
-    else:
-        print(f"📂 找不到現有檔案，將建立新檔案 (從 {season_start} 開始)...")
-
-    # 2. 判斷是否需要執行
+                print("   ⚠️ 檔案似乎為空，重新抓取。")
+        except:
+            print("   ⚠️ 讀取失敗，重新抓取。")
+            
     if start_date > end_date:
-        print(f"✅ 數據已是最新 (至 {end_date})，無需更新！休息一下吧。")
-        return
-
-    print(f"\n🚀 開始增量更新，範圍: {start_date} ~ {end_date}")
-    print("=" * 60)
-
-    # 3. 執行爬蟲
-    new_data = scrape_playsport_history(start_date, end_date)
-
-    # 4. 合併與存檔
-    if new_data:
-        new_df = pd.DataFrame(new_data)
-        
-        # 轉換日期格式以便合併
-        new_df['Date'] = pd.to_datetime(new_df['Date']).dt.date
-        
-        if not existing_df.empty:
-            print(f"\n🔄 正在合併新舊數據... (舊: {len(existing_df)} + 新: {len(new_df)})")
-            final_df = pd.concat([existing_df, new_df], ignore_index=True)
-        else:
-            final_df = new_df
-
-        # 排序與去重 (非常重要：避免重複寫入)
-        # 依日期排序
-        final_df = final_df.sort_values(by=['Date', 'Home_Abbr'])
-        # 移除完全重複的行
-        final_df.drop_duplicates(subset=['Date', 'Home_Abbr', 'Away_Abbr'], keep='last', inplace=True)
-        
-        # 存檔
-        final_df.to_csv(filename, index=False, encoding='utf-8-sig')
-        print(f"💾 存檔完成！總筆數: {len(final_df)}")
-        print(f"   檔案位置: {filename}")
+        print(f"✅ 數據已是最新 (已涵蓋至台灣時間 {end_date})，無需更新。")
     else:
-        print("\n⚠️ 本次執行沒有抓到任何新數據 (可能是網站結構變更或當日無比賽)。")
-
-if __name__ == "__main__":
-    main()
+        print(f"\n🚀 開始更新 2026 賽季數據，範圍: {start_date} ~ {end_date}")
+        print("=" * 60)
+        
+        new_data = scrape_playsport_history(start_date, end_date)
+        
+        if new_data:
+            new_df = pd.DataFrame(new_data)
+            final_df = pd.concat([existing_df, new_df]).drop_duplicates(subset=['Date', 'Home_Abbr', 'Away_Abbr'], keep='last')
+            final_df = final_df.sort_values('Date')
+            
+            final_df.to_csv(filename, index=False, encoding='utf-8-sig')
+            print(f"🎉 更新完成！總筆數: {len(final_df)}")
+            print(f"檔案已儲存至: {filename}")
+        else:
+            print("⚠️ 本次無新數據更新。")

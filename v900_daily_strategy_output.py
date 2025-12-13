@@ -20,12 +20,26 @@ TEAM_MAP = {
 }
 
 def find_latest_prediction_file():
-    """尋找最新的 predictions_YYYY-MM-DD.csv"""
-    files = glob.glob("predictions_*.csv")
+    """尋找最新的 predictions_YYYY-MM-DD.csv (在 predictions 資料夾內)"""
+    # 設定目標資料夾
+    folder_name = "predictions"
+    
+    # 檢查資料夾是否存在
+    if not os.path.exists(folder_name):
+        print(f"⚠️ 警告：找不到 '{folder_name}' 資料夾")
+        return None
+
+    # 設定搜尋路徑 (例如: predictions/predictions_*.csv)
+    search_pattern = os.path.join(folder_name, "predictions_*.csv")
+    files = glob.glob(search_pattern)
+    
+    # 排除 full_report
     daily_files = [f for f in files if "full_report" not in f]
     
     if not daily_files: return None
-    latest_file = max(daily_files, key=os.path.getctime)
+    
+    # 找出最新 (依檔名日期排序最穩)
+    latest_file = sorted(daily_files)[-1]
     return latest_file
 
 def get_playsport_odds_v501(target_date_str):
@@ -34,7 +48,7 @@ def get_playsport_odds_v501(target_date_str):
     target_date_str: 'YYYYMMDD' (TW Time)
     """
     url = f"https://www.playsport.cc/gamesData/result?allianceid=3&gametime={target_date_str}"
-    print(f"  🔄 [v501核心] 正在抓取: {target_date_str} (PlaySport)...")
+    print(f"   🔄 [v501核心] 正在抓取: {target_date_str} (PlaySport)...")
     
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
@@ -52,7 +66,7 @@ def get_playsport_odds_v501(target_date_str):
                 game_rows = main_table.find_all('tr', attrs={'gameid': True})
         
         if not game_rows:
-            print("  ⚠️  找不到比賽數據 (尚未開盤或當日無賽事)。")
+            print("   ⚠️  找不到比賽數據 (尚未開盤或當日無賽事)。")
             return []
             
         # 2. 根據 gameid 分組
@@ -125,11 +139,11 @@ def get_playsport_odds_v501(target_date_str):
                 'Odds_Home': odd_home
             })
         
-        print(f"  ✅ 成功抓取 {len(daily_data)} 場比賽賠率！")
+        print(f"   ✅ 成功抓取 {len(daily_data)} 場比賽賠率！")
         return daily_data
 
     except Exception as e:
-        print(f"  抓取失敗: {e}")
+        print(f"   抓取失敗: {e}")
         return []
 
 def main():
@@ -138,13 +152,19 @@ def main():
     print(" 🎯 讀取預測 -> 爬取 PlaySport -> 存賠率檔 -> 產出策略單")
     print("="*60)
 
-    # 1. 讀取最新預測
+    # --- 自動建立輸出資料夾，避免存檔報錯 ---
+    if not os.path.exists("odds"): os.makedirs("odds")
+    if not os.path.exists("betting_plan"): os.makedirs("betting_plan")
+    # -------------------------------------
+
+    # 1. 讀取最新預測 (從 predictions 資料夾)
     pred_file = find_latest_prediction_file()
     if not pred_file:
-        print("❌ 找不到每日預測檔 (predictions_YYYY-MM-DD.csv)。請先執行 v500。")
+        print("❌ 找不到每日預測檔 (predictions/predictions_YYYY-MM-DD.csv)。請確認資料夾與檔案是否存在。")
         return
 
     # 解析日期 (US Time)
+    # 注意：現在路徑包含資料夾，所以 regex 要處理路徑
     match = re.search(r"predictions_(\d{4}-\d{2}-\d{2})\.csv", pred_file)
     if not match: print("日期解析失敗"); return
     
@@ -167,7 +187,7 @@ def main():
     if not odds_data:
         print("\n❌ 無法取得賠率 (可能是尚未開盤或日期錯誤)。")
         # 產生空檔防止報錯
-        pd.DataFrame(columns=['Date','Team','Opp','Loc','Win%','Odds','EV','Signal','Rank']).to_csv(f"Betting_Plan_{us_date_str}.csv", index=False)
+        pd.DataFrame(columns=['Date','Team','Opp','Loc','Win%','Odds','EV','Signal','Rank']).to_csv(f"betting_plan/Betting_Plan_{us_date_str}.csv", index=False)
         return
 
     df_odds = pd.DataFrame(odds_data)
@@ -255,7 +275,7 @@ def main():
         
         for _, row in df_final.iterrows():
             team_str = f"{row['Team']} ({row['Loc']})"
-            print(f"{team_str:<15} | {row['Win%']:.0%}    | {row['Odds']:<6} | {row['EV']:+.2f}   | {row['Signal']}")
+            print(f"{team_str:<15} | {row['Win%']:.0%}     | {row['Odds']:<6} | {row['EV']:+.2f}   | {row['Signal']}")
 
         # 串關計算
         candidates = df_final[df_final['Rank'] >= 1]

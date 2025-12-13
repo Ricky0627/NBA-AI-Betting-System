@@ -29,7 +29,8 @@ def normalize_team(name):
 
 def find_latest_pair():
     """尋找日期匹配的預測檔與賠率檔"""
-    pred_files = glob.glob("predictions_*.csv")
+    pred_path_pattern = os.path.join("predictions", "predictions_*.csv")
+    pred_files = glob.glob(pred_path_pattern)
     # 排除 full_season / full_report
     pred_files = [f for f in pred_files if "full_" not in f]
     
@@ -38,7 +39,7 @@ def find_latest_pair():
         match = re.search(r"predictions_(\d{4}-\d{2}-\d{2})\.csv", pf)
         if match:
             date_str = match.group(1)
-            odds_file = f"odds_for_{date_str}.csv"
+            odds_file = os.path.join("odds", f"odds_for_{date_str}.csv")
             if os.path.exists(odds_file):
                 pairs.append((date_str, pf, odds_file))
     
