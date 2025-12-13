@@ -25,6 +25,9 @@ jobs:
         pip install -r requirements.txt
 
     - name: Run NBA AI System
+      # 👇 這裡插入了 env 設定，讓程式能讀到 ScraperAPI Key 👇
+      env:
+        SCRAPER_API_KEY: ${{ secrets.SCRAPER_API_KEY }}
       run: |
         python run_all_v3.py
 
