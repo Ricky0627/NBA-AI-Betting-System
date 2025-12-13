@@ -4,6 +4,11 @@ import glob
 import datetime
 import numpy as np
 import re
+import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
+
+# 設定 Matplotlib 不使用視窗介面 (避免在伺服器端報錯)
+plt.switch_backend('Agg')
 
 # --- 設定：Logo 對照 ---
 LOGO_MAP = {
@@ -64,43 +69,26 @@ def merge_odds_data(df_pred, odds_file, pred_filename=None):
 
     try:
         df_o = pd.read_csv(odds_file)
-        
-        # --- [修正 1] 判斷賠率檔是否有 Date 欄位 ---
-        has_date_col = 'Date' in df_o.columns
-        
-        # --- [修正 2] 預先解析預測檔的日期 ---
-        default_date = None
-        if pred_filename:
-            match = re.search(r"predictions_(\d{4}-\d{2}-\d{2})\.csv", pred_filename)
-            if match:
-                default_date = match.group(1)
-        
         odds_map = {}
         for _, row in df_o.iterrows():
-            # 邏輯：有日期欄位就用欄位，沒有就用預測檔的日期
-            if has_date_col:
-                d = str(row['Date'])
-            elif default_date:
-                d = default_date
-            else:
-                continue # 如果都沒有日期資訊，跳過此筆
-            
-            # 確保日期格式只有 YYYY-MM-DD (去掉可能的時間部分)
-            if " " in d: d = d.split(" ")[0]
-
+            d = str(row['Date'])
             h = normalize_team(row['Home_Abbr'])
             a = normalize_team(row['Away_Abbr'])
             odds_map[f"{d}_{h}"] = row['Odds_Home']
             odds_map[f"{d}_{a}"] = row['Odds_Away']
         
-        # --- 下面這裡保持不變，將賠率映射回預測表 ---
         home_odds_list = []
         away_odds_list = []
         home_ev_list = []
         away_ev_list = []
 
+        default_date = None
+        if pred_filename:
+            match = re.search(r"predictions_(\d{4}-\d{2}-\d{2})\.csv", pred_filename)
+            if match:
+                default_date = match.group(1)
+
         for _, row in df_pred.iterrows():
-            # 取得該場比賽日期
             d = default_date
             if not d:
                 if 'date' in row: d = pd.to_datetime(row['date']).strftime('%Y-%m-%d')
@@ -116,7 +104,6 @@ def merge_odds_data(df_pred, odds_file, pred_filename=None):
             h = normalize_team(row['Home'])
             a = normalize_team(row['Away'])
             
-            # 查表
             odd_h = odds_map.get(f"{d}_{h}")
             odd_a = odds_map.get(f"{d}_{a}")
             
@@ -137,12 +124,119 @@ def merge_odds_data(df_pred, odds_file, pred_filename=None):
         df_pred['EV_Away'] = away_ev_list
         
         return df_pred
-
     except Exception as e:
         print(f"❌ 合併賠率時發生錯誤: {e}")
-        import traceback
-        traceback.print_exc() # 印出詳細錯誤以便除錯
         return df_pred
+
+# --- 新增功能：從 Full Report 計算全域統計數據 ---
+def calculate_global_stats_from_full_report():
+    """從 predictions_2026_full_report.csv 計算總勝率和總場次"""
+    csv_file = "predictions_2026_full_report.csv"
+    if not os.path.exists(csv_file):
+        print(f"⚠️ 找不到 {csv_file}，嘗試讀取策略報告...")
+        # Fallback to Strategy Report if Full Report is missing
+        strat_file = "Strategy_Performance_Report.csv"
+        if os.path.exists(strat_file):
+            try:
+                df = pd.read_csv(strat_file)
+                total_games = df['場次'].sum()
+                # 簡單加權平均
+                df['wins'] = df['場次'] * (df['勝率'].str.replace('%','').astype(float)/100)
+                total_wins = df['wins'].sum()
+                win_rate = (total_wins / total_games * 100) if total_games > 0 else 0
+                return int(total_games), win_rate
+            except:
+                pass
+        return 0, 0.0
+
+    try:
+        df = pd.read_csv(csv_file)
+        if df.empty: return 0, 0.0
+        
+        total_games = len(df)
+        total_wins = df['Is_Correct'].sum()
+        
+        win_rate = (total_wins / total_games) * 100 if total_games > 0 else 0.0
+            
+        return int(total_games), win_rate
+    except Exception as e:
+        print(f"⚠️ 計算全域數據時出錯: {e}")
+        return 0, 0.0
+
+# --- 新增功能：生成走勢圖與每日命中圖 ---
+def generate_trend_charts_from_full_report():
+    """讀取 predictions_2026_full_report.csv 並生成圖表"""
+    csv_file = "predictions_2026_full_report.csv"
+    
+    if not os.path.exists(csv_file):
+        print("⚠️ 未找到 predictions_2026_full_report.csv，跳過走勢圖生成。")
+        return ""
+        
+    try:
+        df = pd.read_csv(csv_file)
+        if df.empty: return ""
+        
+        # 處理日期
+        df['date'] = pd.to_datetime(df['date'])
+        
+        # 每日統計
+        daily_stats = df.groupby('date').agg(
+            Total_Games=('Is_Correct', 'count'),
+            Wins=('Is_Correct', 'sum')
+        ).reset_index()
+        
+        daily_stats = daily_stats.sort_values('date')
+        daily_stats['Win_Rate'] = daily_stats['Wins'] / daily_stats['Total_Games']
+        
+        dates = daily_stats['date']
+
+        # --- 圖表 1: 勝率走勢 (Line Chart) ---
+        plt.figure(figsize=(10, 4))
+        plt.plot(dates, daily_stats['Win_Rate'], marker='o', linestyle='-', color='#2a5298', linewidth=2, label='Win Rate')
+        plt.axhline(y=0.5, color='r', linestyle='--', alpha=0.3) # 50% 參考線
+        plt.title('Win Rate Trend (Daily)', fontsize=12)
+        plt.ylabel('Win Rate')
+        plt.gca().yaxis.set_major_formatter(plt.FuncFormatter(lambda y, _: '{:.0%}'.format(y))) # 轉百分比
+        plt.grid(True, alpha=0.3)
+        plt.gcf().autofmt_xdate()
+        plt.tight_layout()
+        plt.savefig('chart_win_rate_trend.png', dpi=100)
+        plt.close()
+
+        # --- 圖表 2: 每日命中場次 (Bar Chart) ---
+        plt.figure(figsize=(10, 4))
+        # 畫總場次 (底)
+        plt.bar(dates, daily_stats['Total_Games'], color='#e9ecef', label='Total Games')
+        # 畫勝場 (上)
+        plt.bar(dates, daily_stats['Wins'], color='#28a745', label='Correct Predictions')
+        
+        plt.title('Daily Correct Predictions', fontsize=12)
+        plt.legend()
+        plt.grid(axis='y', alpha=0.3)
+        plt.gcf().autofmt_xdate()
+        plt.tight_layout()
+        plt.savefig('chart_daily_hits.png', dpi=100)
+        plt.close()
+        
+        return """
+        <div class="row mt-4">
+            <div class="col-md-6">
+                <div class="card-box">
+                    <div class="card-header-custom text-primary"><span><i class="fas fa-chart-line me-2"></i>勝率走勢 (Win Rate Trend)</span></div>
+                    <div class="card-body p-2"><img src="chart_win_rate_trend.png" class="img-fluid rounded" style="width:100%"></div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card-box">
+                    <div class="card-header-custom text-success"><span><i class="fas fa-check-circle me-2"></i>每日命中場次 (Daily Hits)</span></div>
+                    <div class="card-body p-2"><img src="chart_daily_hits.png" class="img-fluid rounded" style="width:100%"></div>
+                </div>
+            </div>
+        </div>
+        """
+    except Exception as e:
+        print(f"❌ 生成走勢圖失敗: {e}")
+        return ""
 
 def generate_strategy_table_html():
     """讀取策略績效 CSV 並轉為 HTML"""
@@ -209,8 +303,39 @@ def generate_strategy_table_html():
         return f'<p class="text-danger text-center">讀取策略報告失敗: {e}</p>'
 
 def generate_html_report(df_parlay, df_raw, last_updated_time, raw_pred_file):
-    """生成 HTML 報告 (v4.1 終極版)"""
+    """生成 HTML 報告 (v4.3 圖表增強版)"""
     
+    # 0. 獲取全域統計數據 (Total Win Rate & Games from Full Report)
+    total_games, avg_win_rate = calculate_global_stats_from_full_report()
+    
+    # 統計卡片 HTML
+    stats_cards_html = f"""
+    <div class="row mb-3">
+        <div class="col-md-6 col-lg-3">
+            <div class="card-box p-3 border-start border-4 border-primary">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="text-muted small text-uppercase fw-bold">總預測場次 (Total Games)</div>
+                        <div class="h3 mb-0 fw-bold text-dark">{total_games}</div>
+                    </div>
+                    <div class="text-primary fs-1 opacity-25"><i class="fas fa-basketball-ball"></i></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 col-lg-3">
+            <div class="card-box p-3 border-start border-4 border-success">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="text-muted small text-uppercase fw-bold">平均勝率 (Win Rate)</div>
+                        <div class="h3 mb-0 fw-bold text-success">{avg_win_rate:.1f}%</div>
+                    </div>
+                    <div class="text-success fs-1 opacity-25"><i class="fas fa-chart-pie"></i></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    """
+
     # 1. 串關區塊
     parlay_html = ""
     if df_parlay.empty:
@@ -287,10 +412,12 @@ def generate_html_report(df_parlay, df_raw, last_updated_time, raw_pred_file):
     else:
         raw_table_html = "<p class='text-center text-muted my-3'>今日無賽事或尚未預測</p>"
 
-    # 3. 策略績效表格 (新增)
+    # 3. 策略績效表格
     strategy_perf_html = generate_strategy_table_html()
 
-    # 4. 大圖表 (單欄滿版)
+    # 4. 圖表區塊 (獲利 + 新增的走勢圖)
+    trend_charts_html = generate_trend_charts_from_full_report()
+    
     chart_html = ""
     if os.path.exists('chart_cumulative_profit.png'):
         chart_html = f"""
@@ -309,12 +436,12 @@ def generate_html_report(df_parlay, df_raw, last_updated_time, raw_pred_file):
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>NBA AI 戰情室 v4.1</title>
+        <title>NBA AI 戰情室 v4.3</title>
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
         <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
         <style>
             body {{ background-color: #f4f6f9; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }}
-            .header-bar {{ background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); color: white; padding: 20px 0; margin-bottom: 30px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }}
+            .header-bar {{ background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); color: white; padding: 20px 0; margin-bottom: 25px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }}
             .card-box {{ background: white; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin-bottom: 20px; overflow: hidden; }}
             .card-header-custom {{ padding: 15px 20px; font-weight: bold; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }}
             .team-logo-sm {{ width: 30px; height: 30px; object-fit: contain; }}
@@ -343,6 +470,8 @@ def generate_html_report(df_parlay, df_raw, last_updated_time, raw_pred_file):
     </div>
 
     <div class="container">
+        {stats_cards_html}
+
         <div class="row">
             <div class="col-lg-7">
                 <div class="section-title">今日核心推薦 (Core Recommendations)</div>
@@ -360,6 +489,8 @@ def generate_html_report(df_parlay, df_raw, last_updated_time, raw_pred_file):
                 </div>
 
                 {chart_html}
+                
+                {trend_charts_html}
             </div>
 
             <div class="col-lg-5">
@@ -371,7 +502,7 @@ def generate_html_report(df_parlay, df_raw, last_updated_time, raw_pred_file):
             </div>
         </div>
 
-        <footer>NBA AI System v4.1 • Powered by Random Forest & Parlay Optimizer</footer>
+        <footer>NBA AI System v4.3 • Powered by Random Forest & Parlay Optimizer</footer>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
@@ -385,7 +516,7 @@ def generate_html_report(df_parlay, df_raw, last_updated_time, raw_pred_file):
     print(f"✅ Dashboard 已生成: index.html")
 
 def main():
-    print("\n🌐 啟動戰情室網頁生成器 v4.2 (修正賠率讀取版)...")
+    print("\n🌐 啟動戰情室網頁生成器 v4.3 (圖表增強版)...")
     
     parlay_file = "Daily_Parlay_Recommendations.csv"
     if os.path.exists(parlay_file):
@@ -399,15 +530,13 @@ def main():
     raw_pred_file = files[0] if files else None
     df_raw = pd.read_csv(raw_pred_file) if raw_pred_file else pd.DataFrame()
     
-    # --- 修改開始: 優先讀取當日賠率 ---
-    target_odds_file = "odds_2026_full_season.csv" # 預設使用總表
+    # 優先讀取當日賠率
+    target_odds_file = "odds_2026_full_season.csv" 
 
     if raw_pred_file:
-        # 從檔名解析日期 predictions_2025-12-12.csv -> 2025-12-12
         match = re.search(r"predictions_(\d{4}-\d{2}-\d{2})\.csv", raw_pred_file)
         if match:
             pred_date = match.group(1)
-            # 嘗試找當天的賠率檔
             daily_odds_path = os.path.join("odds", f"odds_for_{pred_date}.csv")
             if os.path.exists(daily_odds_path):
                 target_odds_file = daily_odds_path
@@ -418,7 +547,6 @@ def main():
     if not df_raw.empty and os.path.exists(target_odds_file):
         print(f"🔗 正在合併賠率資訊...")
         df_raw = merge_odds_data(df_raw, target_odds_file, raw_pred_file)
-    # --- 修改結束 ---
     
     now_str = datetime.datetime.now().strftime('%Y-%m-%d %H:%M')
     generate_html_report(df_parlay, df_raw, now_str, raw_pred_file)
