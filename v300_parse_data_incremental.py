@@ -1,3 +1,4 @@
+import proxy_patch
 import requests
 from bs4 import BeautifulSoup, Comment
 import pandas as pd
