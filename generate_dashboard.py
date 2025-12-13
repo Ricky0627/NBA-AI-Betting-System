@@ -364,7 +364,7 @@ def generate_html_report(df_parlay, df_raw, last_updated_time, raw_pred_file):
     print(f"✅ Dashboard 已生成: index.html")
 
 def main():
-    print("\n🌐 啟動戰情室網頁生成器 v4.1 (策略表+大圖版)...")
+    print("\n🌐 啟動戰情室網頁生成器 v4.2 (修正賠率讀取版)...")
     
     parlay_file = "Daily_Parlay_Recommendations.csv"
     if os.path.exists(parlay_file):
@@ -378,10 +378,26 @@ def main():
     raw_pred_file = files[0] if files else None
     df_raw = pd.read_csv(raw_pred_file) if raw_pred_file else pd.DataFrame()
     
-    odds_file = "odds_2026_full_season.csv"
-    if not df_raw.empty and os.path.exists(odds_file):
-        print("🔗 正在合併最新賠率資訊...")
-        df_raw = merge_odds_data(df_raw, odds_file, raw_pred_file)
+    # --- 修改開始: 優先讀取當日賠率 ---
+    target_odds_file = "odds_2026_full_season.csv" # 預設使用總表
+
+    if raw_pred_file:
+        # 從檔名解析日期 predictions_2025-12-12.csv -> 2025-12-12
+        match = re.search(r"predictions_(\d{4}-\d{2}-\d{2})\.csv", raw_pred_file)
+        if match:
+            pred_date = match.group(1)
+            # 嘗試找當天的賠率檔
+            daily_odds_path = os.path.join("odds", f"odds_for_{pred_date}.csv")
+            if os.path.exists(daily_odds_path):
+                target_odds_file = daily_odds_path
+                print(f"✅ 優先使用當日賠率檔: {target_odds_file}")
+            else:
+                print(f"⚠️ 無當日賠率檔，使用賽季總表: {target_odds_file}")
+
+    if not df_raw.empty and os.path.exists(target_odds_file):
+        print(f"🔗 正在合併賠率資訊...")
+        df_raw = merge_odds_data(df_raw, target_odds_file, raw_pred_file)
+    # --- 修改結束 ---
     
     now_str = datetime.datetime.now().strftime('%Y-%m-%d %H:%M')
     generate_html_report(df_parlay, df_raw, now_str, raw_pred_file)
