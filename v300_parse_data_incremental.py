@@ -224,7 +224,7 @@ def run_v300_data_update():
     session = requests.Session()
     
     # 從環境變數讀取 API Key
-    api_key = os.environ.get('SCRAPERAPI_KEY')
+    api_key = os.environ.get('SCRAPER_API_KEY')
     
     if api_key:
         print("✅ 偵測到 SCRAPERAPI_KEY，啟用代理模式...")
