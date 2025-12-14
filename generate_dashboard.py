@@ -63,14 +63,29 @@ def format_grade_badge(grade):
     if "🏹" in grade: return "bg-danger"
     return "bg-secondary"
 
-# --- merge_odds_data (已移除日期欄位容錯處理) ---
+# --- 修正版 merge_odds_data 函數 (強制補齊日期欄位) ---
 def merge_odds_data(df_pred, odds_file, pred_filename=None):
     if df_pred.empty or not os.path.exists(odds_file):
         return df_pred
 
     try:
         df_o = pd.read_csv(odds_file)
-        # 賠率檔嚴格要求 'Date' 欄位
+        
+        # 1. 嘗試從檔名解析日期，以防 CSV 內沒有
+        fixed_date = None
+        date_match = re.search(r'odds_for_(\d{4}-\d{2}-\d{2})\.csv', odds_file)
+        if date_match:
+            fixed_date = date_match.group(1)
+
+        # 2. 確保賠率檔有 'Date' 欄位
+        if 'date' in df_o.columns and 'Date' not in df_o.columns:
+            df_o = df_o.rename(columns={'date': 'Date'})
+        
+        if 'Date' not in df_o.columns and fixed_date:
+            df_o['Date'] = fixed_date
+            print(f"✅ 修正：賠率檔缺少日期欄位，已強制加上 'Date' = {fixed_date}")
+        
+        # 移除日期欄位容錯處理，程式將只認 'Date' 欄位
         odds_map = {}
         for _, row in df_o.iterrows():
             d = str(row['Date'])
@@ -93,7 +108,6 @@ def merge_odds_data(df_pred, odds_file, pred_filename=None):
         for _, row in df_pred.iterrows():
             d = default_date
             if not d:
-                # 預測檔容錯處理
                 if 'date' in row: d = pd.to_datetime(row['date']).strftime('%Y-%m-%d')
                 elif 'Date' in row: d = pd.to_datetime(row['Date']).strftime('%Y-%m-%d')
             
