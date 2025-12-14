@@ -6,6 +6,10 @@ import numpy as np
 import re
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
+from pandas.plotting import register_matplotlib_converters
+
+# 註冊 Matplotlib 日期轉換器
+register_matplotlib_converters()
 
 # 設定 Matplotlib 不使用視窗介面 (避免在伺服器端報錯)
 plt.switch_backend('Agg')
@@ -63,7 +67,7 @@ def format_grade_badge(grade):
     if "🏹" in grade: return "bg-danger"
     return "bg-secondary"
 
-# --- 修正版 merge_odds_data 函數 (強制補齊日期欄位) ---
+# --- 修正版 merge_odds_data 函數 ---
 def merge_odds_data(df_pred, odds_file, pred_filename=None):
     if df_pred.empty or not os.path.exists(odds_file):
         return df_pred
@@ -71,13 +75,11 @@ def merge_odds_data(df_pred, odds_file, pred_filename=None):
     try:
         df_o = pd.read_csv(odds_file)
         
-        # 1. 嘗試從檔名解析日期，以防 CSV 內沒有
         fixed_date = None
         date_match = re.search(r'odds_for_(\d{4}-\d{2}-\d{2})\.csv', odds_file)
         if date_match:
             fixed_date = date_match.group(1)
 
-        # 2. 確保賠率檔有 'Date' 欄位
         if 'date' in df_o.columns and 'Date' not in df_o.columns:
             df_o = df_o.rename(columns={'date': 'Date'})
         
@@ -85,7 +87,6 @@ def merge_odds_data(df_pred, odds_file, pred_filename=None):
             df_o['Date'] = fixed_date
             print(f"✅ 修正：賠率檔缺少日期欄位，已強制加上 'Date' = {fixed_date}")
         
-        # 移除日期欄位容錯處理，程式將只認 'Date' 欄位
         odds_map = {}
         for _, row in df_o.iterrows():
             d = str(row['Date'])
@@ -184,9 +185,8 @@ def calculate_advanced_stats():
         print(f"⚠️ 計算進階數據時出錯: {e}")
         return 0, 0.0, 0.0, "N/A"
 
-# --- 功能：生成合併圖表 ---
+# --- 功能：生成合併圖表 (獨立於 v980，確保生成 chart_combined_trend.png) ---
 def generate_combined_trend_chart():
-    """讀取 predictions_2026_full_report.csv 並生成單一合併圖表"""
     csv_file = "predictions_2026_full_report.csv"
     
     if not os.path.exists(csv_file):
@@ -197,10 +197,8 @@ def generate_combined_trend_chart():
         df = pd.read_csv(csv_file)
         if df.empty: return ""
         
-        # 處理日期
         df['date'] = pd.to_datetime(df['date'])
         
-        # 每日統計
         daily_stats = df.groupby('date').agg(
             Total_Games=('Is_Correct', 'count'),
             Wins=('Is_Correct', 'sum')
@@ -211,10 +209,8 @@ def generate_combined_trend_chart():
         
         dates = daily_stats['date']
 
-        # --- 開始繪圖 (雙軸圖) ---
         fig, ax1 = plt.subplots(figsize=(10, 5)) 
 
-        # Bar Chart (左軸): 場次
         bar_width = 0.6
         ax1.bar(dates, daily_stats['Total_Games'], color='#e9ecef', label='Total Games', width=bar_width)
         ax1.bar(dates, daily_stats['Wins'], color='#28a745', label='Correct', width=bar_width, alpha=0.8)
@@ -222,8 +218,7 @@ def generate_combined_trend_chart():
         ax1.set_ylabel('Games Count', color='#555')
         ax1.tick_params(axis='y', labelcolor='#555')
         
-        # Line Chart (右軸): 勝率
-        ax2 = ax1.twinx()  # 共享 X 軸
+        ax2 = ax1.twinx() 
         ax2.plot(dates, daily_stats['Win_Rate'], marker='o', markersize=4, linestyle='-', color='#2a5298', linewidth=2, label='Win Rate')
         
         ax2.set_ylabel('Win Rate', color='#2a5298')
@@ -233,7 +228,6 @@ def generate_combined_trend_chart():
         
         plt.title('Daily Performance: Win Rate & Volume Trend', fontsize=12, pad=10)
         
-        # 合併圖例
         lines_1, labels_1 = ax1.get_legend_handles_labels()
         lines_2, labels_2 = ax2.get_legend_handles_labels()
         ax1.legend(lines_1 + lines_2, labels_1 + labels_2, loc='upper left', frameon=True, fontsize='small')
@@ -259,7 +253,6 @@ def generate_combined_trend_chart():
         return ""
 
 def generate_strategy_table_html():
-    """讀取策略績效 CSV 並轉為 HTML"""
     csv_file = "Strategy_Performance_Report.csv"
     if not os.path.exists(csv_file):
         return '<p class="text-muted text-center my-3">尚未執行 v980，無策略數據</p>'
@@ -313,9 +306,7 @@ def generate_strategy_table_html():
     except Exception as e:
         return f'<p class="text-danger text-center">讀取策略報告失敗: {e}</p>'
 
-# --- 功能：讀取最佳策略組合 (含分頁) ---
 def generate_best_combos_table_html():
-    """讀取 Best_Strategy_Combos_Unique.csv 並轉為 HTML (含 JS 分頁)"""
     csv_file = "Best_Strategy_Combos_Unique.csv"
     if not os.path.exists(csv_file):
         return ""
@@ -324,10 +315,8 @@ def generate_best_combos_table_html():
         df = pd.read_csv(csv_file)
         if df.empty: return ""
         
-        # 讀取全部資料 (不只前10筆)
         rows_html = ""
         for _, row in df.iterrows():
-            # 確保欄位存在
             if 'ROI' not in row or '勝率' not in row or '場次' not in row:
                 continue
 
@@ -358,9 +347,7 @@ def generate_best_combos_table_html():
                             <th class="text-center">場次</th>
                         </tr>
                     </thead>
-                    <tbody>
-                        {rows_html}
-                    </tbody>
+                    <tbody>{rows_html}</tbody>
                 </table>
             </div>
             <div class="d-flex justify-content-between align-items-center p-2 bg-light border-top">
@@ -371,7 +358,6 @@ def generate_best_combos_table_html():
         </div>
 
         <script>
-        // JavaScript for Pagination
         document.addEventListener('DOMContentLoaded', function() {{
             const table = document.getElementById('bestCombosTable');
             if (!table) return;
@@ -399,20 +385,13 @@ def generate_best_combos_table_html():
             }}
             
             btnPrev.addEventListener('click', () => {{
-                if (currentPage > 1) {{
-                    currentPage--;
-                    renderTable(currentPage);
-                }}
+                if (currentPage > 1) {{ currentPage--; renderTable(currentPage); }}
             }});
             
             btnNext.addEventListener('click', () => {{
-                if (currentPage < totalPages) {{
-                    currentPage++;
-                    renderTable(currentPage);
-                }}
+                if (currentPage < totalPages) {{ currentPage++; renderTable(currentPage); }}
             }});
             
-            // Initial render
             renderTable(1);
         }});
         </script>
@@ -421,17 +400,14 @@ def generate_best_combos_table_html():
         print(f"⚠️ 讀取最佳組合失敗: {e}")
         return ""
 
+# --- 主功能：生成 HTML 報告 (v4.7 Final) ---
 def generate_html_report(df_parlay, df_raw, last_updated_time, raw_pred_file):
-    """生成 HTML 報告 (v4.7 Final)"""
     
-    # 獲取進階統計數據
     total_games, avg_win_rate, l10_rate, day_record = calculate_advanced_stats()
     
-    # 定義 Last 10 顏色
     l10_color = "text-success" if l10_rate >= 50 else "text-danger"
     if l10_rate >= 70: l10_color = "text-success fw-bold"
     
-    # 統計卡片 HTML (4欄設計)
     stats_cards_html = f"""
     <div class="row mb-3">
         <div class="col-6 col-lg-3 mb-2">
@@ -445,7 +421,6 @@ def generate_html_report(df_parlay, df_raw, last_updated_time, raw_pred_file):
                 </div>
             </div>
         </div>
-        
         <div class="col-6 col-lg-3 mb-2">
             <div class="card-box p-3 border-start border-4 border-success h-100">
                 <div class="d-flex justify-content-between align-items-center">
@@ -457,7 +432,6 @@ def generate_html_report(df_parlay, df_raw, last_updated_time, raw_pred_file):
                 </div>
             </div>
         </div>
-
         <div class="col-6 col-lg-3 mb-2">
             <div class="card-box p-3 border-start border-4 border-info h-100">
                 <div class="d-flex justify-content-between align-items-center">
@@ -469,7 +443,6 @@ def generate_html_report(df_parlay, df_raw, last_updated_time, raw_pred_file):
                 </div>
             </div>
         </div>
-
         <div class="col-6 col-lg-3 mb-2">
             <div class="card-box p-3 border-start border-4 border-warning h-100">
                 <div class="d-flex justify-content-between align-items-center">
@@ -520,19 +493,16 @@ def generate_html_report(df_parlay, df_raw, last_updated_time, raw_pred_file):
         raw_table_html = "<p class='text-center text-muted my-3'>今日無賽事或尚未預測</p>"
 
     strategy_perf_html = generate_strategy_table_html()
-    
-    # 最佳策略組合 (含分頁) HTML
     best_combos_html = generate_best_combos_table_html()
-    
-    # 生成合併圖表
     combined_chart_html = generate_combined_trend_chart()
     
+    # 📌 修正點：變更圖表名稱為 chart_strategy_dashboard.png
     chart_profit_html = ""
-    if os.path.exists('chart_cumulative_profit.png'):
+    if os.path.exists('chart_strategy_dashboard.png'):
         chart_profit_html = f"""
         <div class="card-box mt-4">
-            <div class="card-header-custom text-info"><span><i class="fas fa-chart-line me-2"></i>策略獲利趨勢 (Cumulative Profit Trend)</span></div>
-            <div class="card-body p-2"><img src="chart_cumulative_profit.png" class="img-fluid rounded" alt="獲利曲線" style="width: 100%;"></div>
+            <div class="card-header-custom text-info"><span><i class="fas fa-chart-line me-2"></i>策略與勝率綜合儀表板 (Strategy & Win Rate Dashboard)</span></div>
+            <div class="card-body p-2"><img src="chart_strategy_dashboard.png" class="img-fluid rounded" alt="策略儀表板" style="width: 100%;"></div>
         </div>
         """
 
@@ -605,7 +575,6 @@ def generate_html_report(df_parlay, df_raw, last_updated_time, raw_pred_file):
                 </div>
 
                 {best_combos_html}
-
                 {combined_chart_html}
             </div>
         </div>
@@ -624,7 +593,7 @@ def generate_html_report(df_parlay, df_raw, last_updated_time, raw_pred_file):
     print(f"✅ Dashboard 已生成: index.html")
 
 def main():
-    print("\n🌐 啟動戰情室網頁生成器 v4.7 (Fixed Merge)...")
+    print("\n🌐 啟動戰情室網頁生成器 v4.7 (Updated for Dashboard Chart)...")
     
     parlay_file = "Daily_Parlay_Recommendations.csv"
     if os.path.exists(parlay_file):
