@@ -24,10 +24,10 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
 
-    - name: Install Noto Sans CJK font
+    - name: Install Chinese Fonts
       run: |
         sudo apt-get update
-        sudo apt-get install -y fonts-noto-cjk
+        sudo apt-get install -y fonts-wqy-zenhei
 
     - name: Run NBA AI System
       # 👇 這裡插入了 env 設定，讓程式能讀到 ScraperAPI Key 👇
