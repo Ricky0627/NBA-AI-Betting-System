@@ -4,7 +4,7 @@
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>NBA AI 戰情室 v4.5</title>
+        <title>NBA AI 戰情室 v4.7</title>
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
         <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
         <style>
@@ -30,7 +30,7 @@
                 </div>
                 <div class="text-end">
                     <div class="badge bg-light text-primary fs-6">
-                        <i class="far fa-clock me-1"></i> Update: 2025-12-13 17:02
+                        <i class="far fa-clock me-1"></i> Update: 2025-12-14 03:36
                     </div>
                 </div>
             </div>
@@ -215,6 +215,466 @@
                 </div>
 
                 
+        <div class="card-box mt-4 mb-4">
+            <div class="card-header-custom text-warning" style="background: linear-gradient(to right, #fff, #fff3cd);">
+                <span><i class="fas fa-crown me-2 text-warning"></i>歷史最強策略組合 (Top Combos)</span>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover table-sm mb-0 align-middle" id="bestCombosTable">
+                    <thead class="table-light small">
+                        <tr>
+                            <th>策略組合</th>
+                            <th class="text-center">ROI</th>
+                            <th class="text-center">勝率</th>
+                            <th class="text-center">場次</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        
+            <tr class="combo-row">
+                <td class="small fw-bold">精準打擊 + 鐵桶防禦</td>
+                <td class="text-center text-success fw-bold">34.4%</td>
+                <td class="text-center text-primary">66.7%</td>
+                <td class="text-center text-muted">66</td>
+            </tr>
+            
+            <tr class="combo-row">
+                <td class="small fw-bold">精準打擊 + 精準打擊</td>
+                <td class="text-center text-success fw-bold">32.6%</td>
+                <td class="text-center text-primary">46.1%</td>
+                <td class="text-center text-muted">26</td>
+            </tr>
+            
+            <tr class="combo-row">
+                <td class="small fw-bold">穩健保本 + 精準打擊</td>
+                <td class="text-center text-success fw-bold">15.7%</td>
+                <td class="text-center text-primary">52.9%</td>
+                <td class="text-center text-muted">155</td>
+            </tr>
+            
+            <tr class="combo-row">
+                <td class="small fw-bold">穩健過濾 + 精準打擊</td>
+                <td class="text-center text-success fw-bold">12.6%</td>
+                <td class="text-center text-primary">40.0%</td>
+                <td class="text-center text-muted">95</td>
+            </tr>
+            
+            <tr class="combo-row">
+                <td class="small fw-bold">穩健過濾 + 鐵桶防禦</td>
+                <td class="text-center text-success fw-bold">10.0%</td>
+                <td class="text-center text-primary">51.4%</td>
+                <td class="text-center text-muted">111</td>
+            </tr>
+            
+            <tr class="combo-row">
+                <td class="small fw-bold">平衡型 + 精準打擊</td>
+                <td class="text-center text-success fw-bold">9.9%</td>
+                <td class="text-center text-primary">34.4%</td>
+                <td class="text-center text-muted">61</td>
+            </tr>
+            
+            <tr class="combo-row">
+                <td class="small fw-bold">鐵桶防禦 + 鐵桶防禦</td>
+                <td class="text-center text-success fw-bold">7.7%</td>
+                <td class="text-center text-primary">73.9%</td>
+                <td class="text-center text-muted">46</td>
+            </tr>
+            
+            <tr class="combo-row">
+                <td class="small fw-bold">穩健保本 + 穩健過濾</td>
+                <td class="text-center text-success fw-bold">5.4%</td>
+                <td class="text-center text-primary">47.8%</td>
+                <td class="text-center text-muted">289</td>
+            </tr>
+            
+            <tr class="combo-row">
+                <td class="small fw-bold">平衡型 + 鐵桶防禦</td>
+                <td class="text-center text-success fw-bold">4.2%</td>
+                <td class="text-center text-primary">42.9%</td>
+                <td class="text-center text-muted">84</td>
+            </tr>
+            
+            <tr class="combo-row">
+                <td class="small fw-bold">平衡型 + 穩健保本</td>
+                <td class="text-center text-success fw-bold">3.6%</td>
+                <td class="text-center text-primary">40.3%</td>
+                <td class="text-center text-muted">186</td>
+            </tr>
+            
+            <tr class="combo-row">
+                <td class="small fw-bold">穩健過濾 + 穩健過濾</td>
+                <td class="text-center text-success fw-bold">3.5%</td>
+                <td class="text-center text-primary">38.6%</td>
+                <td class="text-center text-muted">88</td>
+            </tr>
+            
+            <tr class="combo-row">
+                <td class="small fw-bold">穩健保本 + 鐵桶防禦</td>
+                <td class="text-center text-success fw-bold">2.3%</td>
+                <td class="text-center text-primary">62.6%</td>
+                <td class="text-center text-muted">203</td>
+            </tr>
+            
+            <tr class="combo-row">
+                <td class="small fw-bold">平衡型 + 穩健過濾</td>
+                <td class="text-center text-success fw-bold">0.7%</td>
+                <td class="text-center text-primary">31.6%</td>
+                <td class="text-center text-muted">114</td>
+            </tr>
+            
+            <tr class="combo-row">
+                <td class="small fw-bold">穩健保本 + 穩健保本</td>
+                <td class="text-center text-success fw-bold">0.0%</td>
+                <td class="text-center text-primary">56.0%</td>
+                <td class="text-center text-muted">241</td>
+            </tr>
+            
+            <tr class="combo-row">
+                <td class="small fw-bold">極高價值 + 鐵桶防禦</td>
+                <td class="text-center text-danger">-0.2%</td>
+                <td class="text-center text-primary">39.2%</td>
+                <td class="text-center text-muted">97</td>
+            </tr>
+            
+            <tr class="combo-row">
+                <td class="small fw-bold">主場優勢 + 精準打擊</td>
+                <td class="text-center text-danger">-0.3%</td>
+                <td class="text-center text-primary">45.7%</td>
+                <td class="text-center text-muted">116</td>
+            </tr>
+            
+            <tr class="combo-row">
+                <td class="small fw-bold">主場優勢 + 穩健過濾</td>
+                <td class="text-center text-danger">-1.0%</td>
+                <td class="text-center text-primary">45.0%</td>
+                <td class="text-center text-muted">240</td>
+            </tr>
+            
+            <tr class="combo-row">
+                <td class="small fw-bold">客場殺手 + 鐵桶防禦</td>
+                <td class="text-center text-danger">-6.8%</td>
+                <td class="text-center text-primary">36.4%</td>
+                <td class="text-center text-muted">77</td>
+            </tr>
+            
+            <tr class="combo-row">
+                <td class="small fw-bold">主場優勢 + 鐵桶防禦</td>
+                <td class="text-center text-danger">-8.2%</td>
+                <td class="text-center text-primary">54.9%</td>
+                <td class="text-center text-muted">164</td>
+            </tr>
+            
+            <tr class="combo-row">
+                <td class="small fw-bold">主場優勢 + 穩健保本</td>
+                <td class="text-center text-danger">-9.9%</td>
+                <td class="text-center text-primary">50.7%</td>
+                <td class="text-center text-muted">408</td>
+            </tr>
+            
+            <tr class="combo-row">
+                <td class="small fw-bold">主場優勢 + 平衡型</td>
+                <td class="text-center text-danger">-9.9%</td>
+                <td class="text-center text-primary">33.8%</td>
+                <td class="text-center text-muted">160</td>
+            </tr>
+            
+            <tr class="combo-row">
+                <td class="small fw-bold">基礎 + 精準打擊</td>
+                <td class="text-center text-danger">-10.7%</td>
+                <td class="text-center text-primary">29.0%</td>
+                <td class="text-center text-muted">176</td>
+            </tr>
+            
+            <tr class="combo-row">
+                <td class="small fw-bold">基礎 + 鐵桶防禦</td>
+                <td class="text-center text-danger">-11.4%</td>
+                <td class="text-center text-primary">38.1%</td>
+                <td class="text-center text-muted">231</td>
+            </tr>
+            
+            <tr class="combo-row">
+                <td class="small fw-bold">極高價值 + 穩健保本</td>
+                <td class="text-center text-danger">-12.6%</td>
+                <td class="text-center text-primary">31.6%</td>
+                <td class="text-center text-muted">225</td>
+            </tr>
+            
+            <tr class="combo-row">
+                <td class="small fw-bold">狙擊冷門 + 鐵桶防禦</td>
+                <td class="text-center text-danger">-13.4%</td>
+                <td class="text-center text-primary">31.6%</td>
+                <td class="text-center text-muted">139</td>
+            </tr>
+            
+            <tr class="combo-row">
+                <td class="small fw-bold">基礎 + 平衡型</td>
+                <td class="text-center text-danger">-13.6%</td>
+                <td class="text-center text-primary">22.8%</td>
+                <td class="text-center text-muted">193</td>
+            </tr>
+            
+            <tr class="combo-row">
+                <td class="small fw-bold">極高價值 + 精準打擊</td>
+                <td class="text-center text-danger">-14.2%</td>
+                <td class="text-center text-primary">25.0%</td>
+                <td class="text-center text-muted">80</td>
+            </tr>
+            
+            <tr class="combo-row">
+                <td class="small fw-bold">基礎 + 穩健過濾</td>
+                <td class="text-center text-danger">-15.1%</td>
+                <td class="text-center text-primary">27.3%</td>
+                <td class="text-center text-muted">322</td>
+            </tr>
+            
+            <tr class="combo-row">
+                <td class="small fw-bold">主場優勢 + 主場優勢</td>
+                <td class="text-center text-danger">-15.8%</td>
+                <td class="text-center text-primary">47.2%</td>
+                <td class="text-center text-muted">176</td>
+            </tr>
+            
+            <tr class="combo-row">
+                <td class="small fw-bold">基礎 + 穩健保本</td>
+                <td class="text-center text-danger">-17.1%</td>
+                <td class="text-center text-primary">33.3%</td>
+                <td class="text-center text-muted">550</td>
+            </tr>
+            
+            <tr class="combo-row">
+                <td class="small fw-bold">平衡型 + 平衡型</td>
+                <td class="text-center text-danger">-17.7%</td>
+                <td class="text-center text-primary">20.0%</td>
+                <td class="text-center text-muted">30</td>
+            </tr>
+            
+            <tr class="combo-row">
+                <td class="small fw-bold">極高價值 + 穩健過濾</td>
+                <td class="text-center text-danger">-17.8%</td>
+                <td class="text-center text-primary">23.1%</td>
+                <td class="text-center text-muted">134</td>
+            </tr>
+            
+            <tr class="combo-row">
+                <td class="small fw-bold">基礎 + 客場殺手</td>
+                <td class="text-center text-danger">-18.6%</td>
+                <td class="text-center text-primary">18.4%</td>
+                <td class="text-center text-muted">201</td>
+            </tr>
+            
+            <tr class="combo-row">
+                <td class="small fw-bold">主場優勢 + 極高價值</td>
+                <td class="text-center text-danger">-18.7%</td>
+                <td class="text-center text-primary">28.6%</td>
+                <td class="text-center text-muted">192</td>
+            </tr>
+            
+            <tr class="combo-row">
+                <td class="small fw-bold">基礎 + 基礎</td>
+                <td class="text-center text-danger">-19.4%</td>
+                <td class="text-center text-primary">21.4%</td>
+                <td class="text-center text-muted">289</td>
+            </tr>
+            
+            <tr class="combo-row">
+                <td class="small fw-bold">平衡型 + 極高價值</td>
+                <td class="text-center text-danger">-20.5%</td>
+                <td class="text-center text-primary">16.2%</td>
+                <td class="text-center text-muted">80</td>
+            </tr>
+            
+            <tr class="combo-row">
+                <td class="small fw-bold">客場殺手 + 精準打擊</td>
+                <td class="text-center text-danger">-21.3%</td>
+                <td class="text-center text-primary">23.3%</td>
+                <td class="text-center text-muted">60</td>
+            </tr>
+            
+            <tr class="combo-row">
+                <td class="small fw-bold">狙擊冷門 + 精準打擊</td>
+                <td class="text-center text-danger">-21.7%</td>
+                <td class="text-center text-primary">23.1%</td>
+                <td class="text-center text-muted">108</td>
+            </tr>
+            
+            <tr class="combo-row">
+                <td class="small fw-bold">客場殺手 + 穩健保本</td>
+                <td class="text-center text-danger">-22.6%</td>
+                <td class="text-center text-primary">28.1%</td>
+                <td class="text-center text-muted">185</td>
+            </tr>
+            
+            <tr class="combo-row">
+                <td class="small fw-bold">基礎 + 極高價值</td>
+                <td class="text-center text-danger">-22.8%</td>
+                <td class="text-center text-primary">17.8%</td>
+                <td class="text-center text-muted">247</td>
+            </tr>
+            
+            <tr class="combo-row">
+                <td class="small fw-bold">基礎 + 狙擊冷門</td>
+                <td class="text-center text-danger">-23.6%</td>
+                <td class="text-center text-primary">17.5%</td>
+                <td class="text-center text-muted">348</td>
+            </tr>
+            
+            <tr class="combo-row">
+                <td class="small fw-bold">平衡型 + 狙擊冷門</td>
+                <td class="text-center text-danger">-24.3%</td>
+                <td class="text-center text-primary">15.8%</td>
+                <td class="text-center text-muted">114</td>
+            </tr>
+            
+            <tr class="combo-row">
+                <td class="small fw-bold">主場優勢 + 基礎</td>
+                <td class="text-center text-danger">-25.7%</td>
+                <td class="text-center text-primary">28.7%</td>
+                <td class="text-center text-muted">467</td>
+            </tr>
+            
+            <tr class="combo-row">
+                <td class="small fw-bold">狙擊冷門 + 穩健保本</td>
+                <td class="text-center text-danger">-27.3%</td>
+                <td class="text-center text-primary">25.3%</td>
+                <td class="text-center text-muted">328</td>
+            </tr>
+            
+            <tr class="combo-row">
+                <td class="small fw-bold">客場殺手 + 客場殺手</td>
+                <td class="text-center text-danger">-27.3%</td>
+                <td class="text-center text-primary">12.1%</td>
+                <td class="text-center text-muted">33</td>
+            </tr>
+            
+            <tr class="combo-row">
+                <td class="small fw-bold">客場殺手 + 平衡型</td>
+                <td class="text-center text-danger">-28.8%</td>
+                <td class="text-center text-primary">14.8%</td>
+                <td class="text-center text-muted">61</td>
+            </tr>
+            
+            <tr class="combo-row">
+                <td class="small fw-bold">狙擊冷門 + 穩健過濾</td>
+                <td class="text-center text-danger">-29.4%</td>
+                <td class="text-center text-primary">19.7%</td>
+                <td class="text-center text-muted">198</td>
+            </tr>
+            
+            <tr class="combo-row">
+                <td class="small fw-bold">客場殺手 + 穩健過濾</td>
+                <td class="text-center text-danger">-34.2%</td>
+                <td class="text-center text-primary">18.6%</td>
+                <td class="text-center text-muted">124</td>
+            </tr>
+            
+            <tr class="combo-row">
+                <td class="small fw-bold">主場優勢 + 狙擊冷門</td>
+                <td class="text-center text-danger">-34.5%</td>
+                <td class="text-center text-primary">22.1%</td>
+                <td class="text-center text-muted">290</td>
+            </tr>
+            
+            <tr class="combo-row">
+                <td class="small fw-bold">客場殺手 + 狙擊冷門</td>
+                <td class="text-center text-danger">-36.0%</td>
+                <td class="text-center text-primary">11.4%</td>
+                <td class="text-center text-muted">114</td>
+            </tr>
+            
+            <tr class="combo-row">
+                <td class="small fw-bold">狙擊冷門 + 狙擊冷門</td>
+                <td class="text-center text-danger">-37.5%</td>
+                <td class="text-center text-primary">11.0%</td>
+                <td class="text-center text-muted">100</td>
+            </tr>
+            
+            <tr class="combo-row">
+                <td class="small fw-bold">主場優勢 + 客場殺手</td>
+                <td class="text-center text-danger">-38.2%</td>
+                <td class="text-center text-primary">22.0%</td>
+                <td class="text-center text-muted">168</td>
+            </tr>
+            
+            <tr class="combo-row">
+                <td class="small fw-bold">極高價值 + 狙擊冷門</td>
+                <td class="text-center text-danger">-39.6%</td>
+                <td class="text-center text-primary">11.3%</td>
+                <td class="text-center text-muted">142</td>
+            </tr>
+            
+            <tr class="combo-row">
+                <td class="small fw-bold">客場殺手 + 極高價值</td>
+                <td class="text-center text-danger">-40.0%</td>
+                <td class="text-center text-primary">12.2%</td>
+                <td class="text-center text-muted">82</td>
+            </tr>
+            
+            <tr class="combo-row">
+                <td class="small fw-bold">極高價值 + 極高價值</td>
+                <td class="text-center text-danger">-45.9%</td>
+                <td class="text-center text-primary">10.2%</td>
+                <td class="text-center text-muted">49</td>
+            </tr>
+            
+                    </tbody>
+                </table>
+            </div>
+            <div class="d-flex justify-content-between align-items-center p-2 bg-light border-top">
+                <button class="btn btn-sm btn-outline-secondary" id="comboPrev"><i class="fas fa-chevron-left"></i></button>
+                <span class="small text-muted" id="comboPageNum">1 / 1</span>
+                <button class="btn btn-sm btn-outline-secondary" id="comboNext"><i class="fas fa-chevron-right"></i></button>
+            </div>
+        </div>
+
+        <script>
+        // JavaScript for Pagination
+        document.addEventListener('DOMContentLoaded', function() {
+            const table = document.getElementById('bestCombosTable');
+            if (!table) return;
+            const tbody = table.querySelector('tbody');
+            const rows = Array.from(tbody.querySelectorAll('tr.combo-row'));
+            const pageSize = 10;
+            let currentPage = 1;
+            const totalPages = Math.ceil(rows.length / pageSize);
+            
+            const btnPrev = document.getElementById('comboPrev');
+            const btnNext = document.getElementById('comboNext');
+            const pageInd = document.getElementById('comboPageNum');
+
+            function renderTable(page) {
+                rows.forEach((row, index) => {
+                    if (index >= (page - 1) * pageSize && index < page * pageSize) {
+                        row.style.display = '';
+                    } else {
+                        row.style.display = 'none';
+                    }
+                });
+                pageInd.textContent = page + ' / ' + totalPages;
+                btnPrev.disabled = (page === 1);
+                btnNext.disabled = (page === totalPages);
+            }
+            
+            btnPrev.addEventListener('click', () => {
+                if (currentPage > 1) {
+                    currentPage--;
+                    renderTable(currentPage);
+                }
+            });
+            
+            btnNext.addEventListener('click', () => {
+                if (currentPage < totalPages) {
+                    currentPage++;
+                    renderTable(currentPage);
+                }
+            });
+            
+            // Initial render
+            renderTable(1);
+        });
+        </script>
+        
+
+                
         <div class="card-box mt-3">
             <div class="card-header-custom text-dark"><span><i class="fas fa-chart-area me-2"></i>近期戰績走勢 (Performance Trend)</span></div>
             <div class="card-body p-2">
@@ -225,7 +685,7 @@
             </div>
         </div>
 
-        <footer>NBA AI System v4.5 • Powered by Random Forest & Parlay Optimizer</footer>
+        <footer>NBA AI System v4.7 • Powered by Random Forest & Parlay Optimizer</footer>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
