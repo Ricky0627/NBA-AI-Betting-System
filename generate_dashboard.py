@@ -63,12 +63,14 @@ def format_grade_badge(grade):
     if "🏹" in grade: return "bg-danger"
     return "bg-secondary"
 
+# --- merge_odds_data (已移除日期欄位容錯處理) ---
 def merge_odds_data(df_pred, odds_file, pred_filename=None):
     if df_pred.empty or not os.path.exists(odds_file):
         return df_pred
 
     try:
         df_o = pd.read_csv(odds_file)
+        # 賠率檔嚴格要求 'Date' 欄位
         odds_map = {}
         for _, row in df_o.iterrows():
             d = str(row['Date'])
@@ -91,6 +93,7 @@ def merge_odds_data(df_pred, odds_file, pred_filename=None):
         for _, row in df_pred.iterrows():
             d = default_date
             if not d:
+                # 預測檔容錯處理
                 if 'date' in row: d = pd.to_datetime(row['date']).strftime('%Y-%m-%d')
                 elif 'Date' in row: d = pd.to_datetime(row['Date']).strftime('%Y-%m-%d')
             
@@ -296,8 +299,116 @@ def generate_strategy_table_html():
     except Exception as e:
         return f'<p class="text-danger text-center">讀取策略報告失敗: {e}</p>'
 
+# --- 功能：讀取最佳策略組合 (含分頁) ---
+def generate_best_combos_table_html():
+    """讀取 Best_Strategy_Combos_Unique.csv 並轉為 HTML (含 JS 分頁)"""
+    csv_file = "Best_Strategy_Combos_Unique.csv"
+    if not os.path.exists(csv_file):
+        return ""
+    
+    try:
+        df = pd.read_csv(csv_file)
+        if df.empty: return ""
+        
+        # 讀取全部資料 (不只前10筆)
+        rows_html = ""
+        for _, row in df.iterrows():
+            # 確保欄位存在
+            if 'ROI' not in row or '勝率' not in row or '場次' not in row:
+                continue
+
+            roi_val = float(row['ROI'])
+            roi_class = "text-success fw-bold" if roi_val > 0 else "text-danger"
+            
+            rows_html += f"""
+            <tr class="combo-row">
+                <td class="small fw-bold">{row['策略_A']} + {row['策略_B']}</td>
+                <td class="text-center {roi_class}">{row['ROI']:.1f}%</td>
+                <td class="text-center text-primary">{row['勝率']:.1f}%</td>
+                <td class="text-center text-muted">{row['場次']}</td>
+            </tr>
+            """
+            
+        return f"""
+        <div class="card-box mt-4 mb-4">
+            <div class="card-header-custom text-warning" style="background: linear-gradient(to right, #fff, #fff3cd);">
+                <span><i class="fas fa-crown me-2 text-warning"></i>歷史最強策略組合 (Top Combos)</span>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover table-sm mb-0 align-middle" id="bestCombosTable">
+                    <thead class="table-light small">
+                        <tr>
+                            <th>策略組合</th>
+                            <th class="text-center">ROI</th>
+                            <th class="text-center">勝率</th>
+                            <th class="text-center">場次</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {rows_html}
+                    </tbody>
+                </table>
+            </div>
+            <div class="d-flex justify-content-between align-items-center p-2 bg-light border-top">
+                <button class="btn btn-sm btn-outline-secondary" id="comboPrev"><i class="fas fa-chevron-left"></i></button>
+                <span class="small text-muted" id="comboPageNum">1 / 1</span>
+                <button class="btn btn-sm btn-outline-secondary" id="comboNext"><i class="fas fa-chevron-right"></i></button>
+            </div>
+        </div>
+
+        <script>
+        // JavaScript for Pagination
+        document.addEventListener('DOMContentLoaded', function() {{
+            const table = document.getElementById('bestCombosTable');
+            if (!table) return;
+            const tbody = table.querySelector('tbody');
+            const rows = Array.from(tbody.querySelectorAll('tr.combo-row'));
+            const pageSize = 10;
+            let currentPage = 1;
+            const totalPages = Math.ceil(rows.length / pageSize);
+            
+            const btnPrev = document.getElementById('comboPrev');
+            const btnNext = document.getElementById('comboNext');
+            const pageInd = document.getElementById('comboPageNum');
+
+            function renderTable(page) {{
+                rows.forEach((row, index) => {{
+                    if (index >= (page - 1) * pageSize && index < page * pageSize) {{
+                        row.style.display = '';
+                    }} else {{
+                        row.style.display = 'none';
+                    }}
+                }});
+                pageInd.textContent = page + ' / ' + totalPages;
+                btnPrev.disabled = (page === 1);
+                btnNext.disabled = (page === totalPages);
+            }}
+            
+            btnPrev.addEventListener('click', () => {{
+                if (currentPage > 1) {{
+                    currentPage--;
+                    renderTable(currentPage);
+                }}
+            }});
+            
+            btnNext.addEventListener('click', () => {{
+                if (currentPage < totalPages) {{
+                    currentPage++;
+                    renderTable(currentPage);
+                }}
+            }});
+            
+            // Initial render
+            renderTable(1);
+        }});
+        </script>
+        """
+    except Exception as e:
+        print(f"⚠️ 讀取最佳組合失敗: {e}")
+        return ""
+
 def generate_html_report(df_parlay, df_raw, last_updated_time, raw_pred_file):
-    """生成 HTML 報告 (v4.5 Advanced Stats)"""
+    """生成 HTML 報告 (v4.7 Final)"""
     
     # 獲取進階統計數據
     total_games, avg_win_rate, l10_rate, day_record = calculate_advanced_stats()
@@ -396,6 +507,9 @@ def generate_html_report(df_parlay, df_raw, last_updated_time, raw_pred_file):
 
     strategy_perf_html = generate_strategy_table_html()
     
+    # 最佳策略組合 (含分頁) HTML
+    best_combos_html = generate_best_combos_table_html()
+    
     # 生成合併圖表
     combined_chart_html = generate_combined_trend_chart()
     
@@ -414,7 +528,7 @@ def generate_html_report(df_parlay, df_raw, last_updated_time, raw_pred_file):
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>NBA AI 戰情室 v4.5</title>
+        <title>NBA AI 戰情室 v4.7</title>
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
         <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
         <style>
@@ -476,11 +590,13 @@ def generate_html_report(df_parlay, df_raw, last_updated_time, raw_pred_file):
                     <div class="table-responsive" style="max-height: 800px; overflow-y: auto;">{raw_table_html}</div>
                 </div>
 
+                {best_combos_html}
+
                 {combined_chart_html}
             </div>
         </div>
 
-        <footer>NBA AI System v4.5 • Powered by Random Forest & Parlay Optimizer</footer>
+        <footer>NBA AI System v4.7 • Powered by Random Forest & Parlay Optimizer</footer>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
@@ -494,7 +610,7 @@ def generate_html_report(df_parlay, df_raw, last_updated_time, raw_pred_file):
     print(f"✅ Dashboard 已生成: index.html")
 
 def main():
-    print("\n🌐 啟動戰情室網頁生成器 v4.5 (Advanced Stats)...")
+    print("\n🌐 啟動戰情室網頁生成器 v4.7 (Fixed Merge)...")
     
     parlay_file = "Daily_Parlay_Recommendations.csv"
     if os.path.exists(parlay_file):
