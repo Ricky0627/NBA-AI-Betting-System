@@ -4,23 +4,13 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import os
 import matplotlib.cm as cm
-from matplotlib import font_manager  # 新增
 
 # ==========================================
 # 設定區
 # ==========================================
 plt.style.use('ggplot')
 sns.set_theme(style="whitegrid")
-
-# 嘗試載入中文字型檔案 (需放在 repo/fonts 目錄或指定路徑)
-font_path = os.path.join("fonts", "NotoSansCJK-Regular.ttc")
-if os.path.exists(font_path):
-    font_prop = font_manager.FontProperties(fname=font_path)
-    plt.rcParams['font.family'] = font_prop.get_name()
-else:
-    # fallback: 使用常見字型名稱，避免 CI 環境找不到
-    plt.rcParams['font.sans-serif'] = ['Microsoft JhengHei', 'SimHei', 'Arial']
-
+plt.rcParams['font.sans-serif'] = ['Microsoft JhengHei', 'SimHei', 'Arial'] 
 plt.rcParams['axes.unicode_minus'] = False
 plt.rcParams['font.size'] = 14
 
