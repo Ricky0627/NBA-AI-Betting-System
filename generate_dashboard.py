@@ -396,13 +396,46 @@ def generate_html_report(df_parlay, df_raw, last_updated_time, raw_pred_file):
     else:
         parlay_rows = ""
         for _, row in df_parlay.iterrows():
-            t1, t2, grade = row['Team_1'], row['Team_2'], row['Type']
+            t1, t2 = row['Team_1'], row['Team_2']
+            # 取出新欄位資料
+            strategy = row.get('Strategy_Combo', '-')
+            max_roi = row.get('Max_ROI', 0)
+            
+            # 格式化 ROI
+            try:
+                roi_val = float(max_roi)
+                roi_str = f"{roi_val:.1f}%"
+            except:
+                roi_str = str(max_roi)
+            
             logo1 = f'<img src="{get_team_logo(t1)}" class="team-logo-sm">'
             logo2 = f'<img src="{get_team_logo(t2)}" class="team-logo-sm">'
             ev_class = format_ev_color(row['Combined_EV'])
-            badge_class = format_grade_badge(grade)
-            parlay_rows += f"""<tr class="align-middle"><td><span class="badge {badge_class}">{grade}</span></td><td><div class="d-flex align-items-center">{logo1} <span class="fw-bold mx-1">{t1}</span> <span class="text-muted mx-2">+</span> {logo2} <span class="fw-bold mx-1">{t2}</span></div></td><td class="text-center fw-bold">{row['Combined_Odds']:.2f}</td><td class="text-center {ev_class}">{row['Combined_EV']:+.2f}</td></tr>"""
-        parlay_html = f"""<table class="table table-hover mb-0"><thead class="table-light"><tr><th width="20%">策略類型</th><th width="40%">組合 (Combo)</th><th width="20%" class="text-center">總賠率</th><th width="20%" class="text-center">總期望值</th></tr></thead><tbody>{parlay_rows}</tbody></table>"""
+            
+            parlay_rows += f"""
+            <tr class="align-middle">
+                <td><div class="d-flex align-items-center">{logo1} <span class="fw-bold mx-1">{t1}</span> <span class="text-muted mx-2">+</span> {logo2} <span class="fw-bold mx-1">{t2}</span></div></td>
+                <td class="text-center fw-bold">{row['Combined_Odds']:.2f}</td>
+                <td class="text-center {ev_class}">{row['Combined_EV']:+.2f}</td>
+                <td class="text-center small text-muted">{strategy}</td>
+                <td class="text-center fw-bold text-success">{roi_str}</td>
+            </tr>
+            """
+        
+        parlay_html = f"""
+        <table class="table table-hover mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th width="30%">組合 (Combo)</th>
+                    <th width="15%" class="text-center">總賠率</th>
+                    <th width="15%" class="text-center">總期望值</th>
+                    <th width="25%" class="text-center">策略組合</th>
+                    <th width="15%" class="text-center">Max ROI</th>
+                </tr>
+            </thead>
+            <tbody>{parlay_rows}</tbody>
+        </table>
+        """
 
     if not df_raw.empty:
         raw_rows = ""
