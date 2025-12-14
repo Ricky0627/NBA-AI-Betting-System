@@ -428,7 +428,7 @@ def generate_html_report(df_parlay, df_raw, last_updated_time, raw_pred_file):
     strategy_perf_html = generate_strategy_table_html()
     best_combos_html = generate_best_combos_table_html()
     
-    # [新增] 串關策略儀表板區塊
+    # 串關策略儀表板區塊 (取代 Performance Trend)
     parlay_dashboard_html = ""
     if os.path.exists('chart_parlay_dashboard.png'):
         parlay_dashboard_html = f"""
@@ -492,7 +492,7 @@ def generate_html_report(df_parlay, df_raw, last_updated_time, raw_pred_file):
         {stats_cards_html}
 
         <div class="row">
-            <div class="col-lg-7">
+            <div class="col-lg-6">
                 <div class="section-title">今日核心推薦 (Core Recommendations)</div>
                 <div class="card-box">
                     <div class="card-header-custom text-primary"><span><i class="fas fa-link me-2"></i>最佳串關組合 (Best Parlays)</span><span class="badge bg-warning text-dark">AI Optimized</span></div>
@@ -510,7 +510,7 @@ def generate_html_report(df_parlay, df_raw, last_updated_time, raw_pred_file):
                 {chart_profit_html}
             </div>
 
-            <div class="col-lg-5">
+            <div class="col-lg-6">
                 <div class="section-title">全賽事預測 & 賠率 (All Games & Odds)</div>
                 <div class="card-box">
                     <div class="card-header-custom text-secondary"><span><i class="fas fa-list me-2"></i>今日總覽</span><span class="badge bg-light text-dark">{os.path.basename(raw_pred_file) if raw_pred_file else "No Data"}</span></div>
