@@ -96,8 +96,7 @@ def main():
         # "v300_update_master_dataset.py",  # (可選) 更新數據       
         "v500_export_predictions.py",       # 1. 預測
         "v900_daily_strategy_output.py",    # 2. 爬賠率 + 單場策略 + 存賠率檔
-        "v960_parlay_ranking_master.py",
-        "v970_rolling_parlay_optimizer.py",    # 3. 生成最優串關 (讀取 v900 的賠率)
+        "v960_parlay_ranking_master.py",   # 3. 生成最優串關 (讀取 v900 的賠率)
         "v980_strategy_visualizer.py",
         "generate_dashboard.py"             # 4. 生成網頁
     ]
