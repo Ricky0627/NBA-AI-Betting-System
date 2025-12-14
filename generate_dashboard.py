@@ -185,73 +185,6 @@ def calculate_advanced_stats():
         print(f"⚠️ 計算進階數據時出錯: {e}")
         return 0, 0.0, 0.0, "N/A"
 
-# --- 功能：生成合併圖表 (獨立於 v980，確保生成 chart_combined_trend.png) ---
-def generate_combined_trend_chart():
-    csv_file = "predictions_2026_full_report.csv"
-    
-    if not os.path.exists(csv_file):
-        print("⚠️ 未找到 predictions_2026_full_report.csv，跳過圖表生成。")
-        return ""
-        
-    try:
-        df = pd.read_csv(csv_file)
-        if df.empty: return ""
-        
-        df['date'] = pd.to_datetime(df['date'])
-        
-        daily_stats = df.groupby('date').agg(
-            Total_Games=('Is_Correct', 'count'),
-            Wins=('Is_Correct', 'sum')
-        ).reset_index()
-        
-        daily_stats = daily_stats.sort_values('date')
-        daily_stats['Win_Rate'] = daily_stats['Wins'] / daily_stats['Total_Games']
-        
-        dates = daily_stats['date']
-
-        fig, ax1 = plt.subplots(figsize=(10, 5)) 
-
-        bar_width = 0.6
-        ax1.bar(dates, daily_stats['Total_Games'], color='#e9ecef', label='Total Games', width=bar_width)
-        ax1.bar(dates, daily_stats['Wins'], color='#28a745', label='Correct', width=bar_width, alpha=0.8)
-        
-        ax1.set_ylabel('Games Count', color='#555')
-        ax1.tick_params(axis='y', labelcolor='#555')
-        
-        ax2 = ax1.twinx() 
-        ax2.plot(dates, daily_stats['Win_Rate'], marker='o', markersize=4, linestyle='-', color='#2a5298', linewidth=2, label='Win Rate')
-        
-        ax2.set_ylabel('Win Rate', color='#2a5298')
-        ax2.tick_params(axis='y', labelcolor='#2a5298')
-        ax2.set_ylim(0, 1.05) 
-        ax2.yaxis.set_major_formatter(plt.FuncFormatter(lambda y, _: '{:.0%}'.format(y)))
-        
-        plt.title('Daily Performance: Win Rate & Volume Trend', fontsize=12, pad=10)
-        
-        lines_1, labels_1 = ax1.get_legend_handles_labels()
-        lines_2, labels_2 = ax2.get_legend_handles_labels()
-        ax1.legend(lines_1 + lines_2, labels_1 + labels_2, loc='upper left', frameon=True, fontsize='small')
-
-        plt.grid(True, axis='x', alpha=0.2)
-        fig.autofmt_xdate()
-        plt.tight_layout()
-        
-        output_file = 'chart_combined_trend.png'
-        plt.savefig(output_file, dpi=100)
-        plt.close()
-        
-        return f"""
-        <div class="card-box mt-3">
-            <div class="card-header-custom text-dark"><span><i class="fas fa-chart-area me-2"></i>近期戰績走勢 (Performance Trend)</span></div>
-            <div class="card-body p-2">
-                <img src="{output_file}" class="img-fluid rounded" alt="戰績走勢圖" style="width:100%">
-            </div>
-        </div>
-        """
-    except Exception as e:
-        print(f"❌ 生成合併圖表失敗: {e}")
-        return ""
-
 def generate_strategy_table_html():
     csv_file = "Strategy_Performance_Report.csv"
     if not os.path.exists(csv_file):
@@ -494,9 +427,19 @@ def generate_html_report(df_parlay, df_raw, last_updated_time, raw_pred_file):
 
     strategy_perf_html = generate_strategy_table_html()
     best_combos_html = generate_best_combos_table_html()
-    combined_chart_html = generate_combined_trend_chart()
     
-    # 📌 修正點：變更圖表名稱為 chart_strategy_dashboard.png
+    # [新增] 串關策略儀表板區塊
+    parlay_dashboard_html = ""
+    if os.path.exists('chart_parlay_dashboard.png'):
+        parlay_dashboard_html = f"""
+        <div class="card-box mt-3">
+            <div class="card-header-custom text-dark"><span><i class="fas fa-chart-area me-2"></i>串關策略儀表板 (Parlay Performance)</span></div>
+            <div class="card-body p-2">
+                <img src="chart_parlay_dashboard.png" class="img-fluid rounded" alt="串關策略儀表板" style="width:100%">
+            </div>
+        </div>
+        """
+    
     chart_profit_html = ""
     if os.path.exists('chart_strategy_dashboard.png'):
         chart_profit_html = f"""
@@ -575,7 +518,7 @@ def generate_html_report(df_parlay, df_raw, last_updated_time, raw_pred_file):
                 </div>
 
                 {best_combos_html}
-                {combined_chart_html}
+                {parlay_dashboard_html}
             </div>
         </div>
 
@@ -593,7 +536,7 @@ def generate_html_report(df_parlay, df_raw, last_updated_time, raw_pred_file):
     print(f"✅ Dashboard 已生成: index.html")
 
 def main():
-    print("\n🌐 啟動戰情室網頁生成器 v4.7 (Updated for Dashboard Chart)...")
+    print("\n🌐 啟動戰情室網頁生成器 v4.7 (Updated for Parlay Dashboard)...")
     
     parlay_file = "Daily_Parlay_Recommendations.csv"
     if os.path.exists(parlay_file):
