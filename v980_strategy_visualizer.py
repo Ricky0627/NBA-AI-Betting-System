@@ -7,15 +7,21 @@ import matplotlib.cm as cm
 import matplotlib.dates as mdates
 from pandas.plotting import register_matplotlib_converters
 
+# ==========================================
+# 0. 環境設定
+# ==========================================
+# 設定 Matplotlib 不使用視窗介面 (避免在伺服器端報錯)
+plt.switch_backend('Agg')
+
 # 註冊 Matplotlib 日期轉換器
 register_matplotlib_converters()
 
 # ==========================================
-# 1. 環境與字體設定
+# 1. 字體與繪圖風格設定
 # ==========================================
 plt.style.use('ggplot')
 sns.set_theme(style="whitegrid")
-# 加入 Linux 常用的 'WenQuanYi Zen Hei'
+# 設定中文字體優先順序
 plt.rcParams['font.sans-serif'] = ['WenQuanYi Zen Hei', 'SimHei', 'Microsoft JhengHei', 'Arial Unicode MS', 'DejaVu Sans']
 plt.rcParams['axes.unicode_minus'] = False 
 plt.rcParams['font.size'] = 12
@@ -128,18 +134,21 @@ def load_and_simulate():
             print("\n" + "="*60)
             print("🚀 策略績效排行榜 (Top 5)")
             print("="*60)
-            print(df_report_export.head(5).to_markdown(index=False))
+            # 👇 修改這裡：改用 .to_string() 避免需要 tabulate 套件
+            print(df_report_export.head(5).to_string(index=False))
             print("="*60 + "\n")
         
         return results
 
     except Exception as e:
         print(f"❌ 致命錯誤：數據模擬失敗: {e}")
+        import traceback
+        traceback.print_exc()
         return {}
 
 
 # ==========================================
-# 3. 視覺化邏輯：繪製二合一儀表板 (已移除每日場次)
+# 3. 視覺化邏輯：繪製二合一儀表板
 # ==========================================
 def plot_strategy_dashboard(results):
     """
@@ -160,7 +169,7 @@ def plot_strategy_dashboard(results):
         print("⚠️ 沒有數據可繪圖")
         return
 
-    # 修改：改為 2 個子圖 (Rows=2, Cols=1)，高度比例 3:2
+    # 設定畫布：2 個子圖 (Rows=2, Cols=1)，高度比例 3:2
     fig, axes = plt.subplots(2, 1, figsize=(18, 14), sharex=True, gridspec_kw={'height_ratios': [3, 2]})
     colors = cm.tab10(np.linspace(0, 1, len(results)))
     
@@ -212,7 +221,7 @@ def plot_strategy_dashboard(results):
     ax2.set_ylabel('累積勝率', fontsize=14)
     ax2.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, _: '{:.0%}'.format(x)))
 
-    # X 軸日期格式化 (直接對最後一個 ax 設定)
+    # X 軸日期格式化
     plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%m/%d'))
     plt.gca().xaxis.set_major_locator(mdates.DayLocator(interval=5))
 
@@ -234,7 +243,7 @@ def main_visualizer():
         print("📊 正在繪製圖表...")
         plot_strategy_dashboard(results)
     
-    print("✅ 執行完畢。")
+    print("✅ v980_strategy_visualizer.py 執行完畢。")
 
 
 if __name__ == "__main__":
