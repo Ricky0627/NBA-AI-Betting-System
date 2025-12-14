@@ -4,12 +4,29 @@ import os
 import glob
 from itertools import combinations
 import re
+import matplotlib.pyplot as plt
+import seaborn as sns
+import matplotlib.cm as cm
+import matplotlib.dates as mdates
+from pandas.plotting import register_matplotlib_converters
+
+# 註冊 Matplotlib 日期轉換器
+register_matplotlib_converters()
 
 # ==========================================
 # 設定區
 # ==========================================
 HIST_PRED_FILE = "predictions_2026_full_report.csv"
 HIST_ODDS_FILE = "odds_2026_full_season.csv"
+
+# 設定 Matplotlib 不使用視窗介面
+plt.switch_backend('Agg')
+plt.style.use('ggplot')
+sns.set_theme(style="whitegrid")
+# 加入 Linux 常用的 'WenQuanYi Zen Hei'
+plt.rcParams['font.sans-serif'] = ['WenQuanYi Zen Hei', 'SimHei', 'Microsoft JhengHei', 'Arial Unicode MS', 'DejaVu Sans']
+plt.rcParams['axes.unicode_minus'] = False 
+plt.rcParams['font.size'] = 12
 
 # 隊名標準化
 TEAM_MAP = {
@@ -72,6 +89,96 @@ def get_active_strategies(row):
     return strategies
 
 # ==========================================
+# 新增功能：繪製儀表板
+# ==========================================
+def plot_parlay_dashboard(combo_history, top_combos):
+    """
+    繪製 Top 10 串關組合的儀表板 (累積獲利 + 勝率走勢)
+    """
+    if not top_combos:
+        print("⚠️ 沒有足夠的數據繪製儀表板")
+        return
+
+    # 準備數據
+    plottable_data = {}
+    
+    for combo_name in top_combos:
+        # top_combos 是字串 "A + B"，但在 history 中 key 是 tuple (A, B)
+        # 我們需要找回對應的 history key
+        target_key = None
+        for key in combo_history:
+            name = f"{key[0]} + {key[1]}"
+            if name == combo_name:
+                target_key = key
+                break
+        
+        if target_key:
+            records = combo_history[target_key]
+            df = pd.DataFrame(records)
+            df = df.sort_values('date')
+            df['Cumulative_Profit'] = df['profit'].cumsum()
+            df['Cumulative_Wins'] = df['win'].cumsum()
+            df['Bet_Count'] = np.arange(1, len(df) + 1)
+            df['Running_WR'] = df['Cumulative_Wins'] / df['Bet_Count']
+            plottable_data[combo_name] = df
+
+    if not plottable_data:
+        return
+
+    # 設定畫布：2 個子圖
+    fig, axes = plt.subplots(2, 1, figsize=(18, 14), sharex=True, gridspec_kw={'height_ratios': [3, 2]})
+    colors = cm.tab10(np.linspace(0, 1, len(plottable_data)))
+    
+    # --- 圖表 1: 累積獲利趨勢 ---
+    ax1 = axes[0]
+    i = 0
+    for name, df in plottable_data.items():
+        # 第一名 (列表第一個) 特別標示
+        is_best = (i == 0)
+        linewidth = 4.5 if is_best else 2.0 
+        color = '#FFD700' if is_best else colors[i % 10]
+        zorder = 10 if is_best else 2
+        alpha = 1.0 if is_best else 0.7
+        linestyle = ['-', '--', '-.', ':'][i % 4]
+        
+        ax1.plot(df['date'], df['Cumulative_Profit'], 
+                 label=name, 
+                 linewidth=linewidth, color=color, linestyle=linestyle, alpha=alpha, zorder=zorder)
+        i += 1
+            
+    ax1.set_title('Top 10 串關策略組合累積獲利趨勢 (Cumulative Profit)', fontsize=18, fontweight='bold')
+    ax1.set_ylabel('獲利 (單位)', fontsize=14)
+    ax1.legend(bbox_to_anchor=(1.01, 1), loc='upper left', fontsize=10)
+    ax1.grid(True, alpha=0.3)
+
+    # --- 圖表 2: 勝率走勢 ---
+    ax2 = axes[1]
+    i = 0
+    for name, df in plottable_data.items():
+        is_best = (i == 0)
+        linewidth = 3.5 if is_best else 1.0
+        color = '#FFD700' if is_best else colors[i % 10]
+        alpha = 1.0 if is_best else 0.3 
+        
+        if len(df) > 5:
+            ax2.plot(df['date'].iloc[5:], df['Running_WR'].iloc[5:], 
+                     linewidth=linewidth, color=color, alpha=alpha)
+        i += 1
+            
+    ax2.axhline(y=0.5, color='gray', linestyle='--', linewidth=1, alpha=0.5)
+    ax2.set_title('勝率穩定度 (Win Rate Trend) - 金色線為最佳組合', fontsize=16)
+    ax2.set_ylabel('累積勝率', fontsize=14)
+    ax2.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, _: '{:.0%}'.format(x)))
+
+    # X 軸日期格式化
+    plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%m/%d'))
+    plt.gca().xaxis.set_major_locator(mdates.DayLocator(interval=5))
+
+    plt.tight_layout()
+    plt.savefig('chart_parlay_dashboard.png', dpi=100)
+    print("✅ 串關策略儀表板已建立：chart_parlay_dashboard.png")
+
+# ==========================================
 # 第一部分：歷史回測與模型訓練
 # ==========================================
 def load_and_process_history():
@@ -124,6 +231,7 @@ def train_and_export_model(df):
     1. 計算歷史 ROI, 勝率, 場次
     2. 匯出 Best_Strategy_Combos_Unique.csv
     3. 回傳 roi_map 供今日預測使用
+    4. [新增] 繪製 Top 10 儀表板
     """
     if df.empty: return {}
     
@@ -139,6 +247,8 @@ def train_and_export_model(df):
     
     # 統計 (S1, S2) -> {profit, wins, count}
     combo_stats = {} 
+    # [新增] 紀錄歷史每日結果 (S1, S2) -> [{'date', 'profit', 'win'}]
+    combo_history = {}
     
     for date, group in daily_groups:
         bets = group.to_dict('records')
@@ -164,11 +274,19 @@ def train_and_export_model(df):
                     
                     if key not in combo_stats:
                         combo_stats[key] = {'profit': 0.0, 'wins': 0, 'count': 0}
+                        combo_history[key] = []
                     
                     combo_stats[key]['profit'] += profit
                     combo_stats[key]['count'] += 1
                     if is_win:
                         combo_stats[key]['wins'] += 1
+                    
+                    # [新增] 記錄歷史
+                    combo_history[key].append({
+                        'date': date,
+                        'profit': profit,
+                        'win': 1 if is_win else 0
+                    })
                         
     # --- 整理數據並匯出 CSV ---
     export_data = []
@@ -199,10 +317,18 @@ def train_and_export_model(df):
         df_export.to_csv(csv_name, index=False, encoding='utf-8-sig')
         print(f"✅ 策略回測報告已匯出: {csv_name}")
         
-        # 顯示前 3 名
-        print(f"🏆 歷史最強組合前 3 名:")
-        for i, row in df_export.head(3).iterrows():
-            print(f"   {row['策略_A']} + {row['策略_B']} | ROI: {row['ROI']}%")
+        # [新增] 取得 Top 10 組合名稱，供繪圖使用
+        top_10_names = []
+        print(f"🏆 歷史最強組合前 10 名:")
+        for i, row in df_export.head(10).iterrows():
+            name = f"{row['策略_A']} + {row['策略_B']}"
+            top_10_names.append(name)
+            if i < 3: # 只印出前3名的詳細資訊到控制台
+                print(f"   {name} | ROI: {row['ROI']}%")
+        
+        # [新增] 繪製儀表板
+        print("📊 正在繪製 Top 10 串關策略儀表板...")
+        plot_parlay_dashboard(combo_history, top_10_names)
             
     return roi_map
 
