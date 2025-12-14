@@ -1,248 +1,241 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-import seaborn as sns
+import seaborn as sns 
 import os
 import matplotlib.cm as cm
+import matplotlib.dates as mdates
+from pandas.plotting import register_matplotlib_converters
+
+# 註冊 Matplotlib 日期轉換器
+register_matplotlib_converters()
 
 # ==========================================
-# 設定區
+# 1. 環境與字體設定
 # ==========================================
 plt.style.use('ggplot')
 sns.set_theme(style="whitegrid")
-plt.rcParams['font.sans-serif'] = ['Microsoft JhengHei', 'SimHei', 'Arial'] 
-plt.rcParams['axes.unicode_minus'] = False
-plt.rcParams['font.size'] = 14
+# 加入 Linux 常用的 'WenQuanYi Zen Hei'
+plt.rcParams['font.sans-serif'] = ['WenQuanYi Zen Hei', 'SimHei', 'Microsoft JhengHei', 'Arial Unicode MS', 'DejaVu Sans']
+plt.rcParams['axes.unicode_minus'] = False 
+plt.rcParams['font.size'] = 12
 
-# 隊名標準化
-TEAM_MAP = {
-    'PHO': 'PHO', 'PHX': 'PHO', 'BOS': 'BOS', 'MIL': 'MIL', 'DEN': 'DEN',
-    'LAL': 'LAL', 'LAC': 'LAC', 'GSW': 'GSW', 'NYK': 'NYK', 'BKN': 'BRK', 'BRK': 'BRK',
-    'MIA': 'MIA', 'PHI': 'PHI', 'CHI': 'CHI', 'CLE': 'CLE', 'ATL': 'ATL',
-    'TOR': 'TOR', 'WAS': 'WAS', 'CHA': 'CHO', 'CHO': 'CHO', 'ORL': 'ORL',
-    'IND': 'IND', 'DET': 'DET', 'MIN': 'MIN', 'OKC': 'OKC', 'POR': 'POR',
-    'UTA': 'UTA', 'SAC': 'SAC', 'DAL': 'DAL', 'SAS': 'SAS', 'HOU': 'HOU',
-    'MEM': 'MEM', 'NOP': 'NOP', 'NO': 'NOP'
-}
-
-def normalize_team(name):
-    return TEAM_MAP.get(name, name)
-
-def load_and_merge_data(pred_file, odds_file):
+# ==========================================
+# 2. 核心邏輯：載入數據、模擬策略、匯出報告
+# ==========================================
+def load_and_simulate():
     """
-    讀取並合併數據 (邏輯修正版)
+    讀取預測與賠率檔案，模擬各策略損益，並匯出 CSV 報告。
     """
-    print(f"📚 讀取檔案: {pred_file} & {odds_file}...")
+    print("⏳ 正在讀取數據並進行模擬...")
+    
     try:
-        df_p = pd.read_csv(pred_file)
+        # --- A. 讀取檔案 ---
+        pred_file = "predictions_2026_full_report.csv"
+        odds_file = "odds_2026_full_season.csv"
+        
+        if not os.path.exists(pred_file) or not os.path.exists(odds_file):
+            print(f"❌ 錯誤：找不到 {pred_file} 或 {odds_file}")
+            return {}
+
+        df_pred = pd.read_csv(pred_file)
         df_o = pd.read_csv(odds_file)
+
+        df_pred['date'] = pd.to_datetime(df_pred['date'])
         
-        # 日期標準化
-        if 'date' in df_p.columns:
-            df_p['Date'] = pd.to_datetime(df_p['date']).dt.strftime('%Y-%m-%d')
-        elif 'Date' in df_p.columns:
-            df_p['Date'] = pd.to_datetime(df_p['Date']).dt.strftime('%Y-%m-%d')
-            
-        df_o['Date'] = pd.to_datetime(df_o['Date']).dt.strftime('%Y-%m-%d')
+        if 'date' in df_o.columns and 'Date' not in df_o.columns:
+             df_o = df_o.rename(columns={'date': 'Date'})
+        df_o['Date'] = pd.to_datetime(df_o['Date'])
+
+        # --- B. 數據整併 ---
+        odds_home = df_o[['Date', 'Home_Abbr', 'Odds_Home']].rename(columns={'Home_Abbr': 'Team', 'Odds_Home': 'Odds'})
+        odds_home['Is_Home'] = True
+        odds_away = df_o[['Date', 'Away_Abbr', 'Odds_Away']].rename(columns={'Away_Abbr': 'Team', 'Odds_Away': 'Odds'})
+        odds_away['Is_Home'] = False
+        odds_long = pd.concat([odds_home, odds_away])
         
-        # 建立賠率查找表 (只存主隊當 Key，確保唯一性)
-        odds_map = {}
-        for _, row in df_o.iterrows():
-            d = row['Date']
-            h = normalize_team(row['Home_Abbr'])
-            # 格式：(主賠, 客賠)
-            odds_map[f"{d}_{h}"] = (float(row['Odds_Home']), float(row['Odds_Away']))
-            
-        merged_data = []
-        matches_count = 0
+        df_home = df_pred.copy()
+        df_home['Team'] = df_home['Team_Abbr']
+        df_home['Is_Home'] = True
+        df_home['Prob'] = df_home['Win_Prob']
         
-        for _, row in df_p.iterrows():
-            d = row['Date']
-            
-            # 解析隊名
-            if 'Home' in row:
-                h = normalize_team(row['Home'])
-                a = normalize_team(row['Away'])
-                # 如果有 Home_Win_Prob 欄位，直接使用
-                prob_h = float(row['Home_Win_Prob']) if 'Home_Win_Prob' in row else 0.5
-            elif 'Team_Abbr' in row:
-                # 處理另一種格式
-                t = normalize_team(row['Team_Abbr'])
-                o = normalize_team(row['Opp_Abbr'])
-                is_home = row.get('Is_Home', True)
-                if str(is_home).lower() in ['true', '1']:
-                    h, a = t, o
-                    prob_h = float(row['Win_Prob'])
-                else:
-                    h, a = o, t
-                    prob_h = 1.0 - float(row['Win_Prob'])
-            else:
+        df_away = df_pred.copy()
+        df_away['Team'] = df_away['Opp_Abbr']
+        df_away['Is_Home'] = False
+        df_away['Prob'] = 1.0 - df_away['Win_Prob']
+        df_away['Win'] = 1 - df_away['Win']
+        
+        full_df = pd.concat([df_home, df_away], ignore_index=True)
+        merged = pd.merge(full_df, odds_long, left_on=['date', 'Team', 'Is_Home'], right_on=['Date', 'Team', 'Is_Home'], how='inner')
+        merged['EV'] = (merged['Prob'] * merged['Odds']) - 1
+        
+        # --- C. 定義策略 ---
+        strategies = {
+            '🛡️ 穩健過濾 (Prob>60%, Odds>1.3)': merged[(merged['Prob'] > 0.60) & (merged['Odds'] > 1.3)].copy(),
+            '🏰 鐵桶防禦 (Prob>75%)': merged[merged['Prob'] > 0.75].copy(),
+            '🛡️ 穩健保本 (Prob>65%)': merged[merged['Prob'] > 0.65].copy(),
+            '🎯 精準打擊 (Prob>65%, EV>5%)': merged[(merged['Prob'] > 0.65) & (merged['EV'] > 0.05)].copy(),
+            '💎 極高價值 (EV>15%)': merged[merged['EV'] > 0.15].copy(),
+            '⚖️ 平衡型 (Prob>55%, Odds>1.6)': merged[(merged['Prob'] > 0.55) & (merged['Odds'] > 1.6)].copy(),
+            '🏠 主場優勢 (Home, Prob>60%)': merged[(merged['Is_Home'] == True) & (merged['Prob'] > 0.60)].copy(),
+            '🛣️ 客場殺手 (Away, EV>5%)': merged[(merged['Is_Home'] == False) & (merged['EV'] > 0.05)].copy(),
+            '🟢 基礎 (EV>0)': merged[merged['EV'] > 0].copy(),
+            '🏹 狙擊冷門 (Odds>1.75, EV>5%)': merged[(merged['Odds'] >= 1.75) & (merged['EV'] > 0.05)].copy(),
+        }
+
+        results = {}
+        report_data = []
+
+        # --- D. 模擬迴圈 ---
+        for name, strat_df in strategies.items():
+            if strat_df.empty:
+                results[name] = {'df': pd.DataFrame(), 'stats': (0, 0.0, 0.0, 0.0)}
                 continue
-
-            # 查找賠率 (用日期+主隊)
-            odds_tuple = odds_map.get(f"{d}_{h}")
             
-            if odds_tuple:
-                matches_count += 1
-                odds_home, odds_away = odds_tuple
-                prob_a = 1.0 - prob_h
-                
-                # --- 嚴格勝負判定 (優先使用分數) ---
-                real_win_h = 0
-                if 'Home_Score' in row and 'Away_Score' in row:
-                    try:
-                        s_h = float(row['Home_Score'])
-                        s_a = float(row['Away_Score'])
-                        if s_h > s_a: real_win_h = 1
-                    except:
-                        pass
-                elif 'Win' in row:
-                    # 如果只有 Win 欄位，需確認它是指誰贏
-                    # 假設 predictions_full_report.csv 都是主隊視角
-                    if 'Home' in row:
-                        real_win_h = int(row['Win'])
-                    # 如果是 Team_Abbr 視角，且當前行是客隊，Win=1 可能代表客勝
-                    elif 'Team_Abbr' in row and not is_home:
-                        real_win_h = 1 - int(row['Win'])
-                    else:
-                        real_win_h = int(row['Win'])
-
-                real_win_a = 1 - real_win_h
-
-                # --- 產生數據 ---
-                # 主隊下注
-                ev_h = (prob_h * odds_home) - 1
-                merged_data.append({
-                    'Date': pd.to_datetime(d),
-                    'Team': h, 'Prob': prob_h, 'Odds': odds_home, 'EV': ev_h, 'Win': real_win_h, 'Is_Home': True
-                })
-                
-                # 客隊下注
-                ev_a = (prob_a * odds_away) - 1
-                merged_data.append({
-                    'Date': pd.to_datetime(d),
-                    'Team': a, 'Prob': prob_a, 'Odds': odds_away, 'EV': ev_a, 'Win': real_win_a, 'Is_Home': False
-                })
+            strat_df = strat_df.sort_values('date')
+            strat_df['Profit'] = np.where(strat_df['Win'] == 1, strat_df['Odds'] - 1, -1)
+            strat_df['Cumulative_Profit'] = strat_df['Profit'].cumsum()
+            
+            # 計算滾動勝率 (Win Rate Trend)
+            strat_df['Cumulative_Wins'] = strat_df['Win'].cumsum()
+            strat_df['Bet_Count'] = np.arange(1, len(strat_df) + 1)
+            strat_df['Running_WR'] = strat_df['Cumulative_Wins'] / strat_df['Bet_Count']
+            
+            total_bets = len(strat_df)
+            wins = strat_df['Win'].sum()
+            win_rate = wins / total_bets
+            profit_sum = strat_df['Profit'].sum()
+            roi = (profit_sum / total_bets) * 100
+            
+            results[name] = {'df': strat_df, 'stats': (total_bets, win_rate, profit_sum, roi)}
+            
+            report_data.append({
+                '策略名稱': name,
+                '場次': total_bets,
+                '勝率': f"{win_rate:.1%}",
+                '總獲利 (單位)': f"{profit_sum:+.2f}u",
+                'ROI': f"{roi:+.1f}%",
+                'ROI_Raw': roi
+            })
+            
+        # --- E. 匯出 CSV 與 顯示結果 ---
+        df_report = pd.DataFrame(report_data)
+        if not df_report.empty:
+            df_report = df_report.sort_values('ROI_Raw', ascending=False)
+            df_report_export = df_report.drop(columns=['ROI_Raw'])
+            df_report_export.to_csv("Strategy_Performance_Report.csv", index=False, encoding='utf-8-sig')
+            
+            print("\n" + "="*60)
+            print("🚀 策略績效排行榜 (Top 5)")
+            print("="*60)
+            print(df_report_export.head(5).to_markdown(index=False))
+            print("="*60 + "\n")
         
-        print(f"✅ 合併完成: 配對成功 {matches_count} 場 -> 展開為 {len(merged_data)} 筆數據")
-        return pd.DataFrame(merged_data).sort_values('Date')
+        return results
 
     except Exception as e:
-        print(f"❌ 資料讀取錯誤: {e}")
-        return pd.DataFrame()
+        print(f"❌ 致命錯誤：數據模擬失敗: {e}")
+        return {}
 
-def simulate_strategies(df):
+
+# ==========================================
+# 3. 視覺化邏輯：繪製二合一儀表板 (已移除每日場次)
+# ==========================================
+def plot_strategy_dashboard(results):
     """
-    模擬 10 大策略的損益
+    繪製包含「累積獲利」與「勝率走勢」的雙子圖儀表板
     """
-    strategies = {
-        '🟢 基礎 (EV>0)': df[df['EV'] > 0].copy(),
-        '🛡️ 穩健保本 (Prob>65%)': df[df['Prob'] > 0.65].copy(),
-        '🛡️ 穩健過濾 (Prob>60%, Odds>1.3)': df[(df['Prob'] > 0.60) & (df['Odds'] > 1.3)].copy(),
-        '🏰 鐵桶防禦 (Prob>75%)': df[df['Prob'] > 0.75].copy(),
-        '🏹 狙擊冷門 (Odds>1.75, EV>5%)': df[(df['Odds'] >= 1.75) & (df['EV'] > 0.05)].copy(),
-        '💎 極高價值 (EV>15%)': df[df['EV'] > 0.15].copy(),
-        '⚖️ 平衡型 (Prob>55%, Odds>1.6)': df[(df['Prob'] > 0.55) & (df['Odds'] > 1.6)].copy(),
-        '🎯 精準打擊 (Prob>65%, EV>5%)': df[(df['Prob'] > 0.65) & (df['EV'] > 0.05)].copy(),
-        '🏠 主場優勢 (Home, Prob>60%)': df[(df['Is_Home'] == True) & (df['Prob'] > 0.60)].copy(),
-        '🛣️ 客場殺手 (Away, EV>5%)': df[(df['Is_Home'] == False) & (df['EV'] > 0.05)].copy(),
-    }
+    try:
+        df_report = pd.read_csv("Strategy_Performance_Report.csv")
+        df_report['ROI_Val'] = df_report['ROI'].astype(str).str.replace('%', '').str.replace('+', '').astype(float)
+        sorted_names = df_report.sort_values('ROI_Val', ascending=False)['策略名稱'].tolist()
+        best_strategy_name = sorted_names[0] if sorted_names else None
+    except:
+        sorted_names = list(results.keys())
+        best_strategy_name = sorted_names[0] if sorted_names else None
     
-    results = {}
-    for name, strat_df in strategies.items():
-        if strat_df.empty:
-            results[name] = {'df': pd.DataFrame({'Date':[], 'Cumulative_Profit':[]}), 'stats': (0, 0.0, 0.0, 0.0)}
-            continue
-            
-        # 計算獲利 (扣除本金)
-        # 贏: 賠率 - 1 (例如賠率1.8，贏了拿回1.8，扣掉本金1，淨利0.8)
-        # 輸: -1
-        strat_df['Profit'] = np.where(strat_df['Win'] == 1, strat_df['Odds'] - 1, -1)
-        
-        # 異常值過濾 (如果單場獲利超過 10u，可能是賠率資料錯誤，強制修正為 0)
-        strat_df.loc[strat_df['Profit'] > 10, 'Profit'] = 0
-        
-        strat_df['Cumulative_Profit'] = strat_df['Profit'].cumsum()
-        
-        total_bets = len(strat_df)
-        wins = strat_df['Win'].sum()
-        roi = (strat_df['Profit'].sum() / total_bets) * 100
-        results[name] = {'df': strat_df, 'stats': (total_bets, wins/total_bets, strat_df['Profit'].sum(), roi)}
-        
-    return results
-
-def plot_cumulative_profit(results):
-    plt.figure(figsize=(20, 12))
-    colors = cm.tab10(np.linspace(0, 1, len(results)))
-    sorted_results = sorted(results.items(), key=lambda x: x[1]['stats'][3], reverse=True)
+    plottable_results = {name: data for name, data in results.items() if not data['df'].empty}
     
-    has_data = False
-    for i, (name, data) in enumerate(sorted_results):
-        df = data['df']
-        if df.empty: continue
-        has_data = True
-        linestyle = ['-', '--', '-.', ':'][i % 4] 
-        linewidth = 4.0 if i == 0 else 2.0 
-        color = 'gold' if i == 0 else colors[i]
-        zorder = 10 if i == 0 else 2
-        
-        plt.plot(df['Date'], df['Cumulative_Profit'], 
-                 label=f"{name} (ROI: {data['stats'][3]:.1f}%)", 
-                 linewidth=linewidth, color=color, linestyle=linestyle, alpha=0.9, zorder=zorder)
-    
-    if not has_data:
-        plt.text(0.5, 0.5, '無足夠數據繪製圖表', ha='center', va='center', fontsize=20)
-
-    plt.title('10大策略全明星大亂鬥 (Cumulative Profit)', fontsize=24, fontweight='bold')
-    plt.xlabel('日期', fontsize=18)
-    plt.ylabel('獲利 (單位: 注)', fontsize=18)
-    plt.xticks(fontsize=14)
-    plt.yticks(fontsize=14)
-    plt.legend(bbox_to_anchor=(1.01, 1), loc='upper left', borderaxespad=0, fontsize=14)
-    plt.grid(True, alpha=0.3)
-    plt.tight_layout()
-    plt.savefig('chart_cumulative_profit.png', dpi=100)
-    print(f"📊 圖表已儲存: chart_cumulative_profit.png")
-
-def export_strategy_report(results):
-    report_data = []
-    sorted_results = sorted(results.items(), key=lambda x: x[1]['stats'][3], reverse=True)
-    
-    for name, data in sorted_results:
-        count, win_rate, profit, roi = data['stats']
-        report_data.append({
-            '策略名稱': name,
-            '場次': count,
-            '勝率': f"{win_rate:.1%}",
-            '總獲利 (單位)': f"{profit:+.2f}u",
-            'ROI': f"{roi:+.1f}%"
-        })
-        
-    df_report = pd.DataFrame(report_data)
-    df_report.to_csv("Strategy_Performance_Report.csv", index=False, encoding='utf-8-sig')
-    print(f"✅ 策略績效報告已匯出: Strategy_Performance_Report.csv")
-    
-    print("\n" + "="*80)
-    print(f"{'策略名稱':<35} | {'場次':<6} | {'勝率':<6} | {'總獲利':<10} | {'ROI':<6}")
-    print("-" * 80)
-    for item in report_data:
-        print(f"{item['策略名稱']:<35} | {item['場次']:<6} | {item['勝率']:<6} | {item['總獲利 (單位)']:<10} | {item['ROI']:<6}")
-    print("="*80 + "\n")
-
-def main():
-    pred_file = "predictions_2026_full_report.csv"
-    odds_file = "odds_2026_full_season.csv"
-    
-    if not os.path.exists(pred_file) or not os.path.exists(odds_file):
-        print("❌ 找不到輸入檔案。")
+    if not plottable_results:
+        print("⚠️ 沒有數據可繪圖")
         return
-        
-    df = load_and_merge_data(pred_file, odds_file)
-    if df.empty: return
 
-    results = simulate_strategies(df)
-    plot_cumulative_profit(results)
-    export_strategy_report(results)
+    # 修改：改為 2 個子圖 (Rows=2, Cols=1)，高度比例 3:2
+    fig, axes = plt.subplots(2, 1, figsize=(18, 14), sharex=True, gridspec_kw={'height_ratios': [3, 2]})
+    colors = cm.tab10(np.linspace(0, 1, len(results)))
+    
+    # --- 圖表 1: 累積獲利趨勢 ---
+    ax1 = axes[0]
+    i = 0
+    for name in sorted_names:
+        if name in plottable_results:
+            data = plottable_results[name]
+            df = data['df']
+            
+            is_best = (name == best_strategy_name)
+            linewidth = 4.5 if is_best else 2.0 
+            color = '#FFD700' if is_best else colors[i % 10]
+            zorder = 10 if is_best else 2
+            alpha = 1.0 if is_best else 0.7
+            linestyle = ['-', '--', '-.', ':'][i % 4]
+            
+            ax1.plot(df['date'], df['Cumulative_Profit'], 
+                     label=name, 
+                     linewidth=linewidth, color=color, linestyle=linestyle, alpha=alpha, zorder=zorder)
+            i += 1
+            
+    ax1.set_title('各策略累積獲利趨勢 (Cumulative Profit)', fontsize=18, fontweight='bold')
+    ax1.set_ylabel('獲利 (單位)', fontsize=14)
+    ax1.legend(bbox_to_anchor=(1.01, 1), loc='upper left', fontsize=10)
+    ax1.grid(True, alpha=0.3)
+
+    # --- 圖表 2: 勝率走勢 ---
+    ax2 = axes[1]
+    i = 0
+    for name in sorted_names:
+        if name in plottable_results:
+            data = plottable_results[name]
+            df = data['df']
+            
+            is_best = (name == best_strategy_name)
+            linewidth = 3.5 if is_best else 1.0
+            color = '#FFD700' if is_best else colors[i % 10]
+            alpha = 1.0 if is_best else 0.3 
+            
+            if len(df) > 5:
+                ax2.plot(df['date'].iloc[5:], df['Running_WR'].iloc[5:], 
+                         linewidth=linewidth, color=color, alpha=alpha)
+            i += 1
+            
+    ax2.axhline(y=0.5, color='gray', linestyle='--', linewidth=1, alpha=0.5)
+    ax2.set_title(f'勝率穩定度 (Win Rate Trend) - 金色線為最佳策略: {best_strategy_name}', fontsize=16)
+    ax2.set_ylabel('累積勝率', fontsize=14)
+    ax2.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, _: '{:.0%}'.format(x)))
+
+    # X 軸日期格式化 (直接對最後一個 ax 設定)
+    plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%m/%d'))
+    plt.gca().xaxis.set_major_locator(mdates.DayLocator(interval=5))
+
+    plt.tight_layout()
+    plt.savefig('chart_strategy_dashboard.png', dpi=100)
+    print("✅ 圖表已建立：chart_strategy_dashboard.png (含累積獲利與勝率走勢)")
+
+
+def main_visualizer():
+    try:
+        import matplotlib.font_manager as fm
+        fm._get_fontconfig_pattern.cache_clear() 
+    except:
+        pass
+    
+    results = load_and_simulate()
+    
+    if results:
+        print("📊 正在繪製圖表...")
+        plot_strategy_dashboard(results)
+    
+    print("✅ 執行完畢。")
+
 
 if __name__ == "__main__":
-    main()
+    main_visualizer()
