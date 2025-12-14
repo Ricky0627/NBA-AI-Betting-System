@@ -30,7 +30,7 @@
                 </div>
                 <div class="text-end">
                     <div class="badge bg-light text-primary fs-6">
-                        <i class="far fa-clock me-1"></i> Update: 2025-12-14 04:53
+                        <i class="far fa-clock me-1"></i> Update: 2025-12-14 07:55
                     </div>
                 </div>
             </div>
@@ -51,7 +51,6 @@
                 </div>
             </div>
         </div>
-        
         <div class="col-6 col-lg-3 mb-2">
             <div class="card-box p-3 border-start border-4 border-success h-100">
                 <div class="d-flex justify-content-between align-items-center">
@@ -63,7 +62,6 @@
                 </div>
             </div>
         </div>
-
         <div class="col-6 col-lg-3 mb-2">
             <div class="card-box p-3 border-start border-4 border-info h-100">
                 <div class="d-flex justify-content-between align-items-center">
@@ -75,7 +73,6 @@
                 </div>
             </div>
         </div>
-
         <div class="col-6 col-lg-3 mb-2">
             <div class="card-box p-3 border-start border-4 border-warning h-100">
                 <div class="d-flex justify-content-between align-items-center">
@@ -200,11 +197,6 @@
                 </div>
                 
                 
-        <div class="card-box mt-4">
-            <div class="card-header-custom text-info"><span><i class="fas fa-chart-line me-2"></i>策略獲利趨勢 (Cumulative Profit Trend)</span></div>
-            <div class="card-body p-2"><img src="chart_cumulative_profit.png" class="img-fluid rounded" alt="獲利曲線" style="width: 100%;"></div>
-        </div>
-        
             </div>
 
             <div class="col-lg-5">
@@ -230,7 +222,6 @@
                         </tr>
                     </thead>
                     <tbody>
-                        
             <tr class="combo-row">
                 <td class="small fw-bold">精準打擊 + 鐵桶防禦</td>
                 <td class="text-center text-success fw-bold">34.4%</td>
@@ -615,8 +606,7 @@
                 <td class="text-center text-primary">10.2%</td>
                 <td class="text-center text-muted">49</td>
             </tr>
-            
-                    </tbody>
+            </tbody>
                 </table>
             </div>
             <div class="d-flex justify-content-between align-items-center p-2 bg-light border-top">
@@ -627,7 +617,6 @@
         </div>
 
         <script>
-        // JavaScript for Pagination
         document.addEventListener('DOMContentLoaded', function() {
             const table = document.getElementById('bestCombosTable');
             if (!table) return;
@@ -655,25 +644,17 @@
             }
             
             btnPrev.addEventListener('click', () => {
-                if (currentPage > 1) {
-                    currentPage--;
-                    renderTable(currentPage);
-                }
+                if (currentPage > 1) { currentPage--; renderTable(currentPage); }
             });
             
             btnNext.addEventListener('click', () => {
-                if (currentPage < totalPages) {
-                    currentPage++;
-                    renderTable(currentPage);
-                }
+                if (currentPage < totalPages) { currentPage++; renderTable(currentPage); }
             });
             
-            // Initial render
             renderTable(1);
         });
         </script>
         
-
                 
         <div class="card-box mt-3">
             <div class="card-header-custom text-dark"><span><i class="fas fa-chart-area me-2"></i>近期戰績走勢 (Performance Trend)</span></div>
